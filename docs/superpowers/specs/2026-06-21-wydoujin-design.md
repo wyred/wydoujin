@@ -44,7 +44,8 @@ configuration (bundled container optional).
 | Page serving | Stream the requested image straight from the zip on demand. No extraction to disk. Cache resized covers only. |
 | Scanning | "Scan now" button + scheduled periodic scan, both as queued jobs. |
 | Stack | Laravel 13 · Blade + Tailwind · Alpine.js (only JS lib) · MySQL · FrankenPHP · Docker · GitHub Actions. |
-| MySQL | External by config (env-driven). Bundled `mysql` compose service is optional. |
+| MySQL | Production database, external by config (env-driven). Bundled `mysql` compose service is optional. |
+| Dev/test DB | **SQLite** — a file for local dev, in-memory for tests. Migrations stay portable across both engines. |
 
 ## 4. Architecture & Deployment
 
@@ -72,10 +73,17 @@ configuration (bundled container optional).
 
 ### CI / image build
 - GitHub Actions builds the image on push/tag and pushes to a registry (GHCR by
-  default). Tests run in CI against a **MySQL service container** (not SQLite) so
-  the test environment matches production.
+  default). Tests run in CI on **in-memory SQLite**, matching local development.
 
-## 5. Data Model (MySQL)
+### Database environments
+- **Production** runs **MySQL** (external by config / bundled compose service).
+- **Local development and tests** run **SQLite** (a file for dev, in-memory for
+  tests) — zero setup, fast. Migrations stay portable across both (no MySQL-only
+  column types). The one place this divergence matters is full-text title search
+  (§10): the eventual MySQL `FULLTEXT` path needs a MySQL-targeted test when that
+  plan lands; the MVP `LIKE` search behaves the same on both engines.
+
+## 5. Data Model (MySQL in production, SQLite in dev/test)
 
 ### `mangaka`
 One row per top-level folder.
@@ -236,7 +244,8 @@ reliable.
 - **Reader/serving feature tests** — correct page bytes/content-type, out-of-range
   page handling, progress endpoint updates the row.
 - **HTTP smoke tests** for browse pages.
-- CI runs tests against a **MySQL service container** to match production.
+- Tests run on **in-memory SQLite** (fast, zero-setup), matching local dev;
+  production runs MySQL. Migrations stay portable across both.
 
 ## 12. Open Questions / Future Extensions
 

@@ -14,7 +14,7 @@
 - **PHP:** 8.3 or newer.
 - **JS libraries:** Alpine.js is the **only** permitted JS library. No SPA framework, no jQuery.
 - **Design system:** Use the vendored Apple Design System (`resources/design-system/`). Reference its CSS variables (`var(--color-primary)`, `var(--radius-pill)`, `var(--type-*)`, etc.) — never inline a raw hex or size. Dark mode is `data-dark="true"` on `<html>`. Weight ladder is 300/400/600/700 (no 500).
-- **Database:** MySQL only. All connection details come from env (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`). Never hardcode. Tests run against MySQL (a `wydoujin_test` database), not SQLite.
+- **Database:** **MySQL in production; SQLite for local development and tests.** Migrations must stay portable across both — no MySQL-only column types or raw SQL. Connection details come from env (`DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`). Never hardcode.
 - **Deployment:** One Docker image. Library mounted read-only at `/library`; writable data at `/data`.
 - **Auth:** Single-user. `APP_PASSWORD` unset → open; set → one password gate. No users table.
 - **Identity:** A work is identified by `content_hash` (the zip entry-list hash), never by path. (Used in later plans; the column is created here.)
@@ -33,7 +33,7 @@ Created or modified in this plan:
 - `resources/views/layouts/app.blade.php` — base layout.
 - `resources/views/welcome.blade.php` — replaced with a minimal home.
 - `.env.example` — documents all env vars incl. external MySQL.
-- `phpunit.xml` — test DB config (MySQL `wydoujin_test`).
+- `phpunit.xml` — test DB config (in-memory SQLite).
 - `routes/web.php` — health route + login routes.
 - `app/Http/Middleware/RequirePassword.php` — optional password gate.
 - `app/Http/Controllers/Auth/PasswordLoginController.php` — login form + submit.
@@ -129,57 +129,62 @@ git commit -m "feat: scaffold Laravel 13 app with health route"
 
 ---
 
-## Task 2: MySQL test configuration
+## Task 2: SQLite for local dev and tests (MySQL-ready env)
 
 **Files:**
-- Modify: `.env.example`, `phpunit.xml`
+- Modify: `.env.example`, `phpunit.xml`, `.gitignore`
 
 **Interfaces:**
 - Consumes: the booted app from Task 1.
-- Produces: `php artisan test` runs against a MySQL `wydoujin_test` database via `RefreshDatabase`. Later DB tasks depend on this.
+- Produces: `php artisan test` runs against an **in-memory SQLite** database via `RefreshDatabase`; local dev uses a SQLite file. The same env keys drive MySQL in production. Later DB tasks depend on this.
 
 - [ ] **Step 1: Document env vars in `.env.example`**
 
-Set these keys in `.env.example`:
+Set these keys in `.env.example`. SQLite is the local default; the commented block shows the MySQL values production/Docker supplies:
 ```dotenv
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=wydoujin
-DB_USERNAME=wydoujin
-DB_PASSWORD=
+DB_CONNECTION=sqlite
+# For sqlite, DB_DATABASE is a file path; leave unset to use database/database.sqlite
+
+# --- Production / Docker uses MySQL (supplied via compose or the environment) ---
+# DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=wydoujin
+# DB_USERNAME=wydoujin
+# DB_PASSWORD=
 
 APP_PASSWORD=
 LIBRARY_PATH=/library
 DATA_PATH=/data
 ```
 
-- [ ] **Step 2: Configure the test database in `phpunit.xml`**
-
-In the `<php>` section of `phpunit.xml`, set/replace these env entries (remove any `DB_CONNECTION=sqlite` / `DB_DATABASE=:memory:` lines):
-```xml
-<env name="DB_CONNECTION" value="mysql"/>
-<env name="DB_DATABASE" value="wydoujin_test"/>
-```
-
-- [ ] **Step 3: Create the test database locally**
+- [ ] **Step 2: Create the local SQLite file and ignore it**
 
 Run:
 ```bash
-mysql -h 127.0.0.1 -u root -e "CREATE DATABASE IF NOT EXISTS wydoujin_test;"
+touch database/database.sqlite
+echo "/database/database.sqlite" >> .gitignore
 ```
-Expected: no error. (Use real local credentials; this database is only for tests.)
+Expected: file exists; it won't be committed. (Tests don't use this file — they use in-memory SQLite.)
 
-- [ ] **Step 4: Verify the test suite still runs against MySQL**
+- [ ] **Step 3: Configure the test database in `phpunit.xml`**
+
+In the `<php>` section of `phpunit.xml`, ensure these env entries are present and uncommented (Laravel ships them, sometimes commented):
+```xml
+<env name="DB_CONNECTION" value="sqlite"/>
+<env name="DB_DATABASE" value=":memory:"/>
+```
+
+- [ ] **Step 4: Verify the suite runs on SQLite**
 
 Run: `php artisan test --filter=HealthTest`
-Expected: PASS (now using the MySQL connection).
+Expected: PASS (using in-memory SQLite).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .env.example phpunit.xml
-git commit -m "chore: configure MySQL test database"
+git add .env.example phpunit.xml .gitignore
+git commit -m "chore: use SQLite for local dev and tests"
 ```
 
 ---
@@ -1281,6 +1286,7 @@ services:
     environment:
       APP_KEY: ${APP_KEY}
       APP_PASSWORD: ${APP_PASSWORD:-}
+      DB_CONNECTION: ${DB_CONNECTION:-mysql}
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       DB_DATABASE: ${DB_DATABASE:-wydoujin}
@@ -1348,7 +1354,7 @@ git commit -m "feat: add docker-compose with optional MySQL and volumes"
 
 **Interfaces:**
 - Consumes: the repo.
-- Produces: `ci.yml` runs `php artisan test` against a MySQL service on push/PR. `build.yml` builds and pushes the image to GHCR on push to the default branch and on tags.
+- Produces: `ci.yml` runs `php artisan test` (on in-memory SQLite) on push/PR. `build.yml` builds and pushes the image to GHCR on push to the default branch and on tags.
 
 - [ ] **Step 1: Create the CI workflow**
 
@@ -1364,23 +1370,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8
-        env:
-          MYSQL_DATABASE: wydoujin_test
-          MYSQL_ROOT_PASSWORD: root
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: pdo_mysql, zip, gd, intl
+          extensions: pdo_sqlite, zip, gd, intl
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -1389,11 +1384,8 @@ jobs:
       - run: cp .env.example .env && php artisan key:generate
       - run: php artisan test
         env:
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_DATABASE: wydoujin_test
-          DB_USERNAME: root
-          DB_PASSWORD: root
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
 ```
 
 - [ ] **Step 2: Create the build/push workflow**
@@ -1451,7 +1443,7 @@ git commit -m "ci: add test workflow and GHCR image build"
 
 ## Self-Review Notes
 
-- **Spec coverage:** Deployment (Tasks 1,8,9), external MySQL (Tasks 2,9), full data model incl. `content_hash`/`series_locked`/`entries`/`reading_progress`/`scans` (Task 3), models (Task 4), Tailwind+Alpine (Task 5), optional `APP_PASSWORD` auth (Task 6), Intervention Image dependency (Task 7), GitHub Actions with MySQL service (Task 10). Parser, scanning, series detection, reader, and browse surfaces are intentionally deferred to Plans 2–5.
+- **Spec coverage:** Deployment (Tasks 1,8,9), SQLite dev/test + MySQL-ready env (Task 2), external MySQL via compose (Task 9), full data model incl. `content_hash`/`series_locked`/`entries`/`reading_progress`/`scans` (Task 3), models (Task 4), Tailwind+Alpine (Task 5), optional `APP_PASSWORD` auth (Task 6), Intervention Image dependency (Task 7), GitHub Actions running tests on SQLite (Task 10). Parser, scanning, series detection, reader, and browse surfaces are intentionally deferred to Plans 2–5.
 - **Identity:** `content_hash` is `unique` and indexed (Task 3) per the spec's identity rule.
 - **No SQLite:** test config uses MySQL throughout (Tasks 2, 10).
 - **Type consistency:** model relationship names (`works`, `series`, `mangaka`, `readingProgress`) and casts match the migration columns used in the Task 4 test.

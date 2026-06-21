@@ -1,0 +1,13 @@
+/* ============================================================
+   FONTS
+   Display & text both ride the same humanist sans. On Apple
+   platforms system-ui resolves to SF Pro; elsewhere Inter (loaded
+   below) carries the look. Weight ladder 300/400/600/700 — no 500.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+:root {
+  --font-display: "Inter", system-ui, -apple-system, "Helvetica Neue", "Segoe UI", sans-serif;
+  --font-text:    "Inter", system-ui, -apple-system, "Helvetica Neue", "Segoe UI", sans-serif;
+}

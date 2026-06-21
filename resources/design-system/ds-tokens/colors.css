@@ -1,0 +1,86 @@
+/* ============================================================
+   COLORS
+   One blue accent. White / parchment / near-black surfaces.
+   No second brand color, no gradients. Base hexes + semantic
+   aliases. Never inline a hex in a component — reference a var.
+   ============================================================ */
+
+:root {
+  /* ---- Brand & Accent (the single interactive color) ---- */
+  --color-primary: #0066cc;          /* Action Blue — every link & pill CTA */
+  --color-primary-focus: #0071e3;    /* brighter sibling — keyboard focus ring */
+  --color-primary-on-dark: #2997ff;  /* Sky Link Blue — links on dark tiles */
+
+  /* ---- Ink / Text ---- */
+  --color-ink: #1d1d1f;              /* near-black — all headlines & body */
+  --color-ink-muted-80: #333333;     /* body on pearl button surface */
+  --color-ink-muted-48: #7a7a7a;     /* disabled text, fine print */
+  --color-on-dark: #ffffff;          /* text on dark tiles / nav */
+  --color-body-muted: #cccccc;       /* secondary copy on dark tiles */
+
+  /* ---- Surfaces ---- */
+  --color-canvas: #ffffff;           /* dominant white canvas */
+  --color-parchment: #f5f5f7;        /* signature off-white / footer */
+  --color-pearl: #fafafc;            /* ghost-button fill */
+  --color-tile-1: #272729;           /* primary dark tile */
+  --color-tile-2: #2a2a2c;           /* micro-step lighter */
+  --color-tile-3: #252527;           /* micro-step darker */
+  --color-black: #000000;            /* true void — nav bg, video */
+  --color-chip-translucent: rgba(210, 210, 215, 0.64); /* control chip over photo */
+
+  /* ---- Hairlines & Borders ---- */
+  --color-divider-soft: rgba(0, 0, 0, 0.04); /* secondary-button ring */
+  --color-hairline: #e0e0e0;                 /* 1px utility-card border */
+
+  /* ---- On-color text ---- */
+  --color-on-primary: #ffffff;
+
+  /* ============================================================
+     SEMANTIC ALIASES — prefer these in components
+     ============================================================ */
+  --text-heading: var(--color-ink);
+  --text-body: var(--color-ink);
+  --text-muted: var(--color-ink-muted-48);
+  --text-link: var(--color-primary);
+  --text-link-on-dark: var(--color-primary-on-dark);
+
+  --surface-page: var(--color-canvas);
+  --surface-alt: var(--color-parchment);
+  --surface-card: var(--color-canvas);
+  --surface-dark: var(--color-tile-1);
+
+  --border-card: var(--color-hairline);
+  --focus-ring: var(--color-primary-focus);
+}
+
+/* ============================================================
+   DARK THEME
+   Opt in by setting [data-dark="true"] on any ancestor (usually
+   <html> or the app root). The accent brightens to Sky Blue; the
+   black void (nav, video) stays black. Everything else re-maps
+   off the same semantic aliases, so components need no dark code.
+   ============================================================ */
+
+[data-dark="true"] {
+  /* Accent steps up to the on-dark sky blue */
+  --color-primary: #2997ff;
+  --color-primary-focus: #2997ff;
+
+  /* Ink inverts to near-white */
+  --color-ink: #f5f5f7;
+  --color-ink-muted-80: #d6d6db;
+  --color-ink-muted-48: #98989d;
+
+  /* Surfaces drop to charcoal */
+  --color-canvas: #1a1a1c;
+  --color-parchment: #232326;
+  --color-pearl: #2a2a2c;
+
+  /* Hairlines & dividers lift to translucent white */
+  --color-hairline: #3a3a3d;
+  --color-divider-soft: rgba(255, 255, 255, 0.08);
+
+  /* Re-point semantic aliases that referenced the light accent */
+  --text-link: var(--color-primary);
+  --focus-ring: var(--color-primary-focus);
+}

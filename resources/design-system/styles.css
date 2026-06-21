@@ -1,0 +1,41 @@
+/* ============================================================
+   APPLE DESIGN SYSTEM — global entry
+   This is the file consuming projects link. It pulls in every
+   token layer, the font stack, and a minimal base reset.
+   One blue accent · white / parchment surfaces · near-black ink ·
+   tight Apple tracking · light + dark.
+   ============================================================ */
+
+@import url("ds-tokens/fonts.css");
+@import url("ds-tokens/colors.css");
+@import url("ds-tokens/typography.css");
+@import url("ds-tokens/shape.css");
+@import url("ds-tokens/spacing.css");
+
+/* ---- Base reset ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font: var(--type-body);
+  letter-spacing: var(--tracking-body);
+  color: var(--text-body);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Smooth the canvas/ink swap when toggling themes. */
+body,
+[data-dark] {
+  transition: background-color .3s ease, color .3s ease;
+}

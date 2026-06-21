@@ -1,0 +1,21 @@
+/* ============================================================
+   SPACING — base unit 8px. Structural layout snaps to 8/12/16/
+   20/24. Section padding inside a tile is 80px; tiles stack
+   edge-to-edge with 0 gap (the color change is the divider).
+   ============================================================ */
+
+:root {
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 17px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --space-section: 80px;   /* vertical padding inside a product tile */
+
+  /* Layout constants */
+  --container-text: 980px;   /* text-heavy sections */
+  --container-grid: 1440px;  /* product / utility grids */
+  --grid-gutter: 24px;
+}

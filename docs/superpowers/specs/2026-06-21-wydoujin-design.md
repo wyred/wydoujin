@@ -247,3 +247,26 @@ reliable.
 - Long-strip ("webtoon") reader mode.
 - Optional per-page extraction cache if streaming proves too slow for very large
   archives.
+
+## 13. Design System
+
+The app's visual language is the **Apple Design System**, authored on
+claude.ai/design (project `7f55e543-1f4e-4574-afa2-2dfda16b2992`) and vendored into
+the repo at `resources/design-system/` (see its `SOURCE.md` for provenance).
+
+- **House style:** one blue accent, white / parchment surfaces, near-black ink,
+  Inter type with tight tracking, pill-shaped controls, a single reserved shadow,
+  quiet motion. Light + dark are baked into the tokens.
+- **Tokens are live.** `resources/css/app.css` imports the design system's
+  `styles.css`, so the whole app inherits its CSS variables and `[data-dark="true"]`
+  dark mode. Components reference variables (`var(--color-primary)`,
+  `var(--radius-pill)`, `var(--type-body)`, …) — never raw hex/sizes.
+- **Dark mode reuse:** the reader's dark theme (§9) rides the same
+  `data-dark="true"` switch — no component-level dark code needed.
+- **Components are reference, not runtime.** The 8 components (Button, Badge, Card,
+  Input, NavBar, OptionChip, Segmented, Textarea) ship as React `.jsx` + `.d.ts`
+  under `resources/design-system/components/`. They are the visual/interaction spec
+  only; each will be re-implemented as a **Blade + Alpine** partial during Plan 5
+  (Browse Surfaces & UI), keeping the app React-free per §4.
+- **Note:** `ds-tokens/fonts.css` loads Inter from Google Fonts at runtime;
+  self-hosting Inter is a possible later step for fully offline deployment.

@@ -57,7 +57,6 @@ class CoverGeneratorTest extends TestCase
         ob_start();
         imagepng($img);
         $png = (string) ob_get_clean();
-        imagedestroy($img);
 
         return $png;
     }

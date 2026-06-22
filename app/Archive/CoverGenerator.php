@@ -47,13 +47,11 @@ final class CoverGenerator
                 ->decode($bytes)
                 ->scaleDown(width: $this->width) // never upscales / 拡大はしない
                 ->encode(new WebpEncoder($this->quality));
+            $encoded->save($this->coversDir.'/'.$contentHash.'.webp');
         } catch (Throwable $e) {
             throw new ArchiveException("Cannot decode cover image for {$entryName}: {$e->getMessage()}", 0, $e);
         }
 
-        $relative = 'covers/'.$contentHash.'.webp';
-        $encoded->save($this->coversDir.'/'.$contentHash.'.webp');
-
-        return $relative;
+        return 'covers/'.$contentHash.'.webp';
     }
 }

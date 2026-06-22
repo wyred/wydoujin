@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordLoginController;
+use App\Http\Controllers\CoverController;
 use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,3 +17,7 @@ Route::post('/login', [PasswordLoginController::class, 'store']);
 Route::get('/work/{work}/page/{n}', [PageController::class, 'show'])
     ->whereNumber('n')
     ->name('work.page');
+
+Route::get('/covers/{hash}.webp', [CoverController::class, 'show'])
+    ->where('hash', '[0-9a-f]{64}')
+    ->name('cover');

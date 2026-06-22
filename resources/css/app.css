@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+/* Apple Design System — vendored live tokens (resources/design-system/SOURCE.md).
+   Imported after Tailwind so the design system owns the base look. */
+@import '../design-system/styles.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -7,7 +10,3 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
-
-/* Apple Design System — vendored live tokens (resources/design-system/SOURCE.md).
-   Imported AFTER Tailwind so the design system owns the base look. */
-@import '../design-system/styles.css';

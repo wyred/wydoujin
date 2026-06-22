@@ -1,0 +1,35 @@
+services:
+  app:
+    image: wydoujin:dev
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      APP_KEY: ${APP_KEY}
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      DB_CONNECTION: ${DB_CONNECTION:-mysql}
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE:-wydoujin}
+      DB_USERNAME: ${DB_USERNAME:-wydoujin}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - ${LIBRARY_PATH:-./library}:/library:ro
+      - wydoujin_data:/data
+    depends_on:
+      - mysql
+
+  # Optional: remove this service and point DB_HOST at your own server to use external MySQL.
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-wydoujin}
+      MYSQL_USER: ${DB_USERNAME:-wydoujin}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+    volumes:
+      - wydoujin_db:/var/lib/mysql
+
+volumes:
+  wydoujin_data:
+  wydoujin_db:

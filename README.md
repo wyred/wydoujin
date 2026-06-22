@@ -56,3 +56,14 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Running
+
+1. Copy `.env.example` to `.env` and run `php artisan key:generate` (or set `APP_KEY`).
+2. Set `LIBRARY_PATH` to your `<mangaka>/<doujin>.zip` library.
+3. `docker compose up -d`.
+4. Run migrations: `docker compose exec app php artisan migrate --force`.
+
+### External MySQL
+Remove the `mysql` service from `docker-compose.yml` and set
+`DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD` to your server.

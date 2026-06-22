@@ -32,6 +32,7 @@ class LibraryScannerMissingTest extends TestCase
         $work = Work::firstOrFail();
         ReadingProgress::create(['work_id' => $work->id, 'current_page' => 3]);
 
+        $this->travel(1)->days();
         unlink($path); // file disappears
         $stats = app(LibraryScanner::class)->scan();
 
@@ -75,6 +76,7 @@ class LibraryScannerMissingTest extends TestCase
         $old = Work::firstOrFail();
         $oldHash = $old->content_hash;
 
+        $this->travel(1)->days();
         // Replace the zip's CONTENT at the same path (different entry list → different content_hash).
         unlink($path);
         $this->makeDoujin('Circle', 'Title', ['001.jpg', '002.jpg', '003.jpg']);

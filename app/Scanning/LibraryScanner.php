@@ -43,9 +43,7 @@ final class LibraryScanner
         }
 
         // Missing sweep: works not seen this scan. / 未検出のworksをmissingに。
-        // Work::$dateFormat stores microseconds, so this comparison is exact.
-        // / Work::$dateFormatがマイクロ秒を保存するため比較は正確。
-        $stats['missing'] = Work::where('last_seen_at', '<', $scanStart->format('Y-m-d H:i:s.u'))
+        $stats['missing'] = Work::where('last_seen_at', '<', $scanStart)
             ->where('is_missing', false)
             ->update(['is_missing' => true]);
 

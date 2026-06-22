@@ -13,10 +13,6 @@ class Work extends Model
 
     protected $guarded = [];
 
-    // Store datetimes with microsecond precision so missing-sweep comparisons are exact.
-    // / 欠落スイープの比較精度を保つためマイクロ秒で保存。
-    protected $dateFormat = 'Y-m-d H:i:s.u';
-
     protected $casts = [
         'flags' => 'array',
         'entries' => 'array',

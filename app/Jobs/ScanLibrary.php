@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Scan;
 use App\Scanning\ScannerContract;
+use App\Series\SeriesDetectorContract;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,7 +24,7 @@ final class ScanLibrary implements ShouldQueue
     {
     }
 
-    public function handle(ScannerContract $scanner): void
+    public function handle(ScannerContract $scanner, SeriesDetectorContract $detector): void
     {
         $scan = Scan::create([
             'status' => 'running',
@@ -32,7 +33,8 @@ final class ScanLibrary implements ShouldQueue
         ]);
 
         try {
-            $stats = $scanner->scan();
+            // Scan first, then group into series; merge both stat sets. / 走査→シリーズ検出→統計併合。
+            $stats = array_merge($scanner->scan(), $detector->detect());
             $scan->update(['status' => 'completed', 'stats' => $stats, 'finished_at' => now()]);
         } catch (Throwable $e) {
             // Record the failure; do not re-throw (avoids retry-spamming failed scan rows).

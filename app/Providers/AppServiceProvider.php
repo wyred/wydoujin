@@ -6,6 +6,7 @@ use App\Archive\ArchiveInspector;
 use App\Archive\CoverGenerator;
 use App\Parsing\FilenameParser;
 use App\Parsing\NamePattern;
+use App\Scanning\LibraryScanner;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,6 +33,13 @@ class AppServiceProvider extends ServiceProvider
             config('scan.data_path').'/covers',
             config('scan.cover.width'),
             config('scan.cover.quality'),
+        ));
+
+        $this->app->bind(LibraryScanner::class, fn ($app) => new LibraryScanner(
+            $app->make(ArchiveInspector::class),
+            $app->make(CoverGenerator::class),
+            $app->make(FilenameParser::class),
+            config('scan.library_path'),
         ));
     }
 

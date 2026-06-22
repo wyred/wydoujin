@@ -1,14 +1,13 @@
 <?php
 
 use App\Http\Controllers\Auth\PasswordLoginController;
+use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CoverController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReadingProgressController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [BrowseController::class, 'home'])->name('home');
 
 Route::get('/health', fn () => response()->json(['status' => 'ok']));
 

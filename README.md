@@ -64,6 +64,8 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 3. `docker compose up -d`.
 4. Run migrations: `docker compose exec app php artisan migrate --force`.
 
+**Production note:** The default passwords (`secret` / `rootsecret`) are for local dev only. In production, set strong values for `DB_PASSWORD` (and `DB_ROOT_PASSWORD` if using the bundled MySQL) in your `.env`.
+
 ### External MySQL
-Remove the `mysql` service from `docker-compose.yml` and set
-`DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD` to your server.
+Remove the `mysql` service from `docker-compose.yml` **and** the `depends_on: mysql` entry from the `app` service, then set
+`DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD` to your server. Both changes are required — leaving `depends_on` in place while the `mysql` service is absent will cause `docker compose up` to fail.

@@ -18,8 +18,9 @@ services:
       - wydoujin_data:/data
     depends_on:
       - mysql
+    restart: unless-stopped
 
-  # Optional: remove this service and point DB_HOST at your own server to use external MySQL.
+  # Optional: to use an external MySQL server, remove this service AND the app's `depends_on: mysql` above, then point DB_HOST/DB_PORT/etc. at your server.
   mysql:
     image: mysql:8
     environment:
@@ -29,6 +30,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
     volumes:
       - wydoujin_db:/var/lib/mysql
+    restart: unless-stopped
 
 volumes:
   wydoujin_data:

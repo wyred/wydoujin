@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 /**
  * Walks the library and syncs works into the DB by content_hash. / ライブラリを走査しworksを同期。
  */
-final class LibraryScanner
+final class LibraryScanner implements ScannerContract
 {
     public function __construct(
         private readonly ArchiveInspector $inspector,

@@ -7,6 +7,7 @@ use App\Archive\CoverGenerator;
 use App\Parsing\FilenameParser;
 use App\Parsing\NamePattern;
 use App\Scanning\LibraryScanner;
+use App\Scanning\ScannerContract;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -41,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
             $app->make(FilenameParser::class),
             config('scan.library_path'),
         ));
+
+        $this->app->bind(ScannerContract::class, fn ($app) => $app->make(LibraryScanner::class));
     }
 
     /**

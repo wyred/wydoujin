@@ -33,4 +33,13 @@ class ModelRelationsTest extends TestCase
         $this->assertSame(['001.jpg', '002.jpg'], $work->entries);
         $this->assertSame(3, $work->readingProgress->current_page);
     }
+
+    public function test_work_without_series_has_null_series(): void
+    {
+        $mangaka = Mangaka::factory()->create();
+        $work = Work::factory()->for($mangaka)->create();
+
+        $this->assertNull($work->series_id);
+        $this->assertNull($work->series);
+    }
 }

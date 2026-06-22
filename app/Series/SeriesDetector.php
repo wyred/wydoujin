@@ -25,7 +25,8 @@ final class SeriesDetector implements SeriesDetectorContract
         $grouped = 0;
 
         foreach (Mangaka::all() as $mangaka) {
-            // Auto-detection governs only non-locked works. / ロック作品は対象外。
+            // Filter only locked works — NOT is_missing. Missing works (§7: never deleted, progress kept) stay
+            // grouped so a transiently-missing volume doesn't fragment its series. / 欠落作品も故意にシリーズ維持。
             $works = Work::where('mangaka_id', $mangaka->id)
                 ->where('series_locked', false)
                 ->orderBy('id')

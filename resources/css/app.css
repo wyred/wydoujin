@@ -1,6 +1,13 @@
 @import 'tailwindcss';
+
 /* Apple Design System — vendored live tokens (resources/design-system/SOURCE.md).
-   Imported after Tailwind so the design system owns the base look. */
+   Tailwind v4 inlines TOP-LEVEL @imports but DROPS the @import url(...) nested
+   inside the vendored styles.css, so the token layers are imported directly here.
+   styles.css still supplies the base reset + theme transition. */
+@import '../design-system/ds-tokens/colors.css';
+@import '../design-system/ds-tokens/typography.css';
+@import '../design-system/ds-tokens/shape.css';
+@import '../design-system/ds-tokens/spacing.css';
 @import '../design-system/styles.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -14,7 +21,13 @@
 /* Hide Alpine-cloaked elements until Alpine initializes. */
 [x-cloak] { display: none !important; }
 
-/* App-specific: destructive/error text — the vendored design system has no error token. */
+/* App-specific overrides:
+   - Map the design system's display/text font tokens to the self-hosted Instrument
+     Sans, so the type scale uses the bundled font (not the vendored fonts.css
+     Google-Fonts Inter import, which we intentionally do not load).
+   - Destructive/error text — the vendored design system has no error token. */
 :root {
+    --font-display: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-text: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
     --color-error: #b8453e;
 }

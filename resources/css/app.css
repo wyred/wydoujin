@@ -13,3 +13,8 @@
 
 /* Hide Alpine-cloaked elements until Alpine initializes. */
 [x-cloak] { display: none !important; }
+
+/* App-specific: destructive/error text — the vendored design system has no error token. */
+:root {
+    --color-error: #b8453e;
+}

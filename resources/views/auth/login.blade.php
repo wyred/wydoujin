@@ -9,7 +9,7 @@
                    class="w-full"
                    style="background:var(--surface-card); color:var(--text-body); border:1px solid var(--color-hairline); border-radius:var(--radius-md); padding:11px var(--space-md); font:var(--type-body);">
             @error('password')
-                <p style="color:#b8453e; font:var(--type-caption);">{{ $message }}</p>
+                <p style="color:var(--color-error); font:var(--type-caption);">{{ $message }}</p>
             @enderror
             <x-button type="submit" class="w-full">Enter</x-button>
         </form>

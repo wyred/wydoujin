@@ -12,11 +12,11 @@ class RequirePassword
     {
         $password = config('app.password');
 
-        if (empty($password)) {
+        if ($password === null || $password === '') {
             return $next($request);
         }
 
-        if ($request->is('login', 'health')) {
+        if (in_array($request->path(), ['login', 'health'], true)) {
             return $next($request);
         }
 

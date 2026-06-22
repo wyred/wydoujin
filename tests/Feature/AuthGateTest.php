@@ -45,4 +45,10 @@ class AuthGateTest extends TestCase
         config(['app.password' => 'secret']);
         $this->getJson('/health')->assertOk();
     }
+
+    public function test_zero_is_treated_as_a_real_password(): void
+    {
+        config(['app.password' => '0']);
+        $this->get('/')->assertRedirect('/login');
+    }
 }

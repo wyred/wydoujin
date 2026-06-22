@@ -1445,5 +1445,5 @@ git commit -m "ci: add test workflow and GHCR image build"
 
 - **Spec coverage:** Deployment (Tasks 1,8,9), SQLite dev/test + MySQL-ready env (Task 2), external MySQL via compose (Task 9), full data model incl. `content_hash`/`series_locked`/`entries`/`reading_progress`/`scans` (Task 3), models (Task 4), Tailwind+Alpine (Task 5), optional `APP_PASSWORD` auth (Task 6), Intervention Image dependency (Task 7), GitHub Actions running tests on SQLite (Task 10). Parser, scanning, series detection, reader, and browse surfaces are intentionally deferred to Plans 2–5.
 - **Identity:** `content_hash` is `unique` and indexed (Task 3) per the spec's identity rule.
-- **No SQLite:** test config uses MySQL throughout (Tasks 2, 10).
+- **Test/dev DB:** tests run on in-memory SQLite and local dev on a SQLite file (Tasks 2, 10); production runs MySQL, with migrations kept portable across both engines.
 - **Type consistency:** model relationship names (`works`, `series`, `mangaka`, `readingProgress`) and casts match the migration columns used in the Task 4 test.

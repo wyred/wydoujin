@@ -8,6 +8,8 @@ use App\Parsing\FilenameParser;
 use App\Parsing\NamePattern;
 use App\Scanning\LibraryScanner;
 use App\Scanning\ScannerContract;
+use App\Series\SeriesDetector;
+use App\Series\SeriesDetectorContract;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -44,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
         ));
 
         $this->app->bind(ScannerContract::class, fn ($app) => $app->make(LibraryScanner::class));
+
+        $this->app->bind(SeriesDetectorContract::class, fn ($app) => $app->make(SeriesDetector::class));
     }
 
     /**

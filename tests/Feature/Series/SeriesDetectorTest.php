@@ -1,0 +1,105 @@
+<?php
+
+namespace Tests\Feature\Series;
+
+use App\Models\Series;
+use App\Models\Work;
+use App\Series\SeriesDetectorContract;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class SeriesDetectorTest extends TestCase
+{
+    use RefreshDatabase;
+    use SeedsMangakaWorks;
+
+    private function detector(): SeriesDetectorContract
+    {
+        return app(SeriesDetectorContract::class);
+    }
+
+    public function test_groups_multi_volume_into_one_auto_series(): void
+    {
+        $a = $this->seedWork('Z.A.P.', '四畳半物語');
+        $b = $this->seedWork('Z.A.P.', '四畳半物語 二畳目');
+
+        $stats = $this->detector()->detect();
+
+        $this->assertSame(1, $stats['series_created']);
+        $this->assertSame(2, $stats['works_grouped']);
+        $this->assertSame(1, Series::count());
+        $series = Series::firstOrFail();
+        $this->assertSame('四畳半物語', $series->name);
+        $this->assertTrue($series->is_auto);
+        $this->assertSame($series->id, $a->refresh()->series_id);
+        $this->assertSame($series->id, $b->refresh()->series_id);
+    }
+
+    public function test_all_volumes_without_a_bare_stem_still_group(): void
+    {
+        $this->seedWork('Z.A.P.', '四畳半物語 二畳目');
+        $this->seedWork('Z.A.P.', '四畳半物語 三畳目');
+
+        $this->detector()->detect();
+
+        $this->assertSame(1, Series::count());
+        $this->assertSame('四畳半物語', Series::firstOrFail()->name);
+    }
+
+    public function test_prefix_at_boundary_groups_unknown_suffix(): void
+    {
+        // 黒猫編 is not in the normalizer vocab; the space boundary still merges. / 接頭辞境界で結合。
+        $this->seedWork('Circle', 'ねこむすめ');
+        $this->seedWork('Circle', 'ねこむすめ 黒猫編');
+
+        $this->detector()->detect();
+
+        $this->assertSame(1, Series::count());
+        $this->assertSame('ねこむすめ', Series::firstOrFail()->name);
+    }
+
+    public function test_prefix_without_boundary_does_not_merge(): void
+    {
+        $this->seedWork('Circle', 'Love');
+        $this->seedWork('Circle', 'Lovely');
+
+        $this->detector()->detect();
+
+        $this->assertSame(0, Series::count());
+        $this->assertNull(Work::where('title', 'Love')->firstOrFail()->series_id);
+    }
+
+    public function test_same_parody_distinct_titles_stay_standalone(): void
+    {
+        // The Fate trap: shared parody, different titles → never a series. / パロディで結合しない。
+        $p = ['parody' => 'Fate/Grand Order'];
+        $this->seedWork('FateCircle', 'カルデアの日常', $p);
+        $this->seedWork('FateCircle', '謁見のあとで', $p);
+        $this->seedWork('FateCircle', 'ぐだ子とマシュ', $p);
+
+        $stats = $this->detector()->detect();
+
+        $this->assertSame(0, Series::count());
+        $this->assertSame(0, $stats['works_grouped']);
+        $this->assertSame(0, Work::whereNotNull('series_id')->count());
+    }
+
+    public function test_single_work_makes_no_series(): void
+    {
+        $this->seedWork('Solo', 'ひとりぼっち');
+
+        $this->detector()->detect();
+
+        $this->assertSame(0, Series::count());
+    }
+
+    public function test_series_never_cross_mangaka(): void
+    {
+        $this->seedWork('CircleA', '同じ題');
+        $this->seedWork('CircleB', '同じ題');
+
+        $this->detector()->detect();
+
+        $this->assertSame(0, Series::count());
+    }
+}

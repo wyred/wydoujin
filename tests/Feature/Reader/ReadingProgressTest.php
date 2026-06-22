@@ -70,4 +70,21 @@ class ReadingProgressTest extends TestCase
         $this->postJson("/work/{$work->id}/progress", ['current_page' => 0])->assertStatus(422);
         $this->postJson("/work/{$work->id}/progress", [])->assertStatus(422);
     }
+
+    public function test_preserves_first_completed_at_on_re_completion(): void
+    {
+        $work = $this->work(5);
+
+        $this->postJson("/work/{$work->id}/progress", ['current_page' => 5])->assertOk();
+        $first = ReadingProgress::where('work_id', $work->id)->firstOrFail();
+        $firstCompletedAt = $first->completed_at;
+
+        // Un-complete, then re-complete; the original completed_at must be retained.
+        // 一旦未完了に戻し再完了。最初のcompleted_atを保持すること。
+        $this->postJson("/work/{$work->id}/progress", ['current_page' => 3])->assertOk();
+        $this->postJson("/work/{$work->id}/progress", ['current_page' => 5])->assertOk();
+
+        $second = ReadingProgress::where('work_id', $work->id)->firstOrFail();
+        $this->assertEquals($firstCompletedAt, $second->completed_at);
+    }
 }

@@ -1,2 +1,2 @@
-#!/command/execlineb -P
-frankenphp php-server --listen :8080 --root /app/public
+#!/command/with-contenv sh
+exec frankenphp php-server --listen :8080 --root /app/public

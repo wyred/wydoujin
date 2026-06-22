@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\PasswordLoginController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CoverController;
+use App\Http\Controllers\MangakaController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReadingProgressController;
 use Illuminate\Support\Facades\Route;
@@ -24,3 +25,6 @@ Route::get('/covers/{hash}.webp', [CoverController::class, 'show'])
 
 Route::post('/work/{work}/progress', [ReadingProgressController::class, 'update'])
     ->name('work.progress');
+
+Route::get('/mangaka', [MangakaController::class, 'index'])->name('mangaka.index');
+Route::get('/mangaka/{mangaka:slug}', [MangakaController::class, 'show'])->name('mangaka.show');

@@ -37,7 +37,6 @@ COPY docker/s6/s6-rc.d /etc/s6-overlay/s6-rc.d
 RUN mkdir -p /data /library \
     && chown -R www-data:www-data /app/storage /app/bootstrap/cache /data
 
-ENV SERVER_NAME=:8080
 EXPOSE 8080
 ENTRYPOINT ["/init"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \

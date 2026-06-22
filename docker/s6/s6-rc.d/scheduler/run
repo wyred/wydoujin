@@ -1,0 +1,2 @@
+#!/command/with-contenv sh
+exec php /app/artisan schedule:work

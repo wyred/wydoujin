@@ -31,5 +31,22 @@ class FallbackPatternTest extends TestCase
 
         $r2 = $p->parse('Two Lovers EN', 'SomeMangaka');
         $this->assertSame('Two Lovers EN', $r2->title);
+        $this->assertSame('Two Lovers EN', $r2->titleRaw);
+        $this->assertSame('Two Lovers EN', $r2->sortTitle);
+        $this->assertNull($r2->event);
+        $this->assertNull($r2->circle);
+        $this->assertNull($r2->author);
+        $this->assertNull($r2->parody);
+        $this->assertNull($r2->language);
+        $this->assertSame([], $r2->flags);
+    }
+
+    public function test_parse_trims_title_but_keeps_raw_filename(): void
+    {
+        $r = (new FallbackPattern())->parse('  Spaced Title  ', 'SomeMangaka');
+
+        $this->assertSame('Spaced Title', $r->title);
+        $this->assertSame('  Spaced Title  ', $r->titleRaw);
+        $this->assertSame('Spaced Title', $r->sortTitle);
     }
 }

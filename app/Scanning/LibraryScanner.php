@@ -2,6 +2,7 @@
 
 namespace App\Scanning;
 
+use App\Archive\ArchiveException;
 use App\Archive\ArchiveInspector;
 use App\Archive\CoverGenerator;
 use App\Models\Mangaka;
@@ -23,18 +24,30 @@ final class LibraryScanner
     ) {
     }
 
-    /** @return array<string,int> stats (added, updated, moved) */
+    /** @return array<string,int> stats (added, updated, moved, missing, failed) */
     public function scan(): array
     {
-        $stats = ['added' => 0, 'updated' => 0, 'moved' => 0];
+        $stats = ['added' => 0, 'updated' => 0, 'moved' => 0, 'missing' => 0, 'failed' => 0];
         $scanStart = Carbon::now();
 
         foreach ($this->mangakaFolders() as $folder) {
             $mangaka = $this->resolveMangaka(basename($folder));
             foreach (glob($folder.'/*.zip') ?: [] as $zipPath) {
-                $this->processZip($zipPath, $mangaka, $scanStart, $stats);
+                try {
+                    $this->processZip($zipPath, $mangaka, $scanStart, $stats);
+                } catch (ArchiveException $e) {
+                    $stats['failed']++;
+                    report($e); // log and continue / 記録して継続
+                }
             }
         }
+
+        // Missing sweep: works not seen this scan. / 未検出のworksをmissingに。
+        // Work::$dateFormat stores microseconds, so this comparison is exact.
+        // / Work::$dateFormatがマイクロ秒を保存するため比較は正確。
+        $stats['missing'] = Work::where('last_seen_at', '<', $scanStart->format('Y-m-d H:i:s.u'))
+            ->where('is_missing', false)
+            ->update(['is_missing' => true]);
 
         return $stats;
     }

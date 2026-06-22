@@ -102,4 +102,66 @@ class SeriesDetectorTest extends TestCase
 
         $this->assertSame(0, Series::count());
     }
+
+    public function test_locked_work_is_excluded_from_autodetection(): void
+    {
+        $a = $this->seedWork('Z.A.P.', '四畳半物語');
+        $b = $this->seedWork('Z.A.P.', '四畳半物語 二畳目', ['series_locked' => true]);
+
+        $this->detector()->detect();
+
+        // Only one non-locked work shares the stem → no series; locked work untouched.
+        // 非ロックは1作のみ→シリーズ化せず。ロック作品は不変。
+        $this->assertSame(0, Series::count());
+        $this->assertNull($a->refresh()->series_id);
+        $this->assertNull($b->refresh()->series_id);
+        $this->assertTrue($b->refresh()->series_locked);
+    }
+
+    public function test_manual_series_and_locked_links_are_never_undone(): void
+    {
+        $m = $this->mangaka('Z.A.P.');
+        $manual = Series::create(['mangaka_id' => $m->id, 'name' => '私家版', 'is_auto' => false]);
+        // Two locked works in a manual series with distinct titles (would not auto-group).
+        $x = $this->seedWork('Z.A.P.', 'バラバラ題その一', ['series_id' => $manual->id, 'series_locked' => true]);
+        $y = $this->seedWork('Z.A.P.', '全然ちがう題', ['series_id' => $manual->id, 'series_locked' => true]);
+        $standalone = $this->seedWork('Z.A.P.', 'ぽつん');
+
+        $this->detector()->detect();
+
+        $this->assertNotNull(Series::find($manual->id));         // manual series preserved
+        $this->assertSame($manual->id, $x->refresh()->series_id); // locked links intact
+        $this->assertSame($manual->id, $y->refresh()->series_id);
+        $this->assertNull($standalone->refresh()->series_id);     // non-locked standalone cleared
+    }
+
+    public function test_detect_is_idempotent(): void
+    {
+        $this->seedWork('Z.A.P.', '四畳半物語');
+        $this->seedWork('Z.A.P.', '四畳半物語 二畳目');
+
+        $first = $this->detector()->detect();
+        $seriesId = Series::firstOrFail()->id;
+        $second = $this->detector()->detect();
+
+        $this->assertSame(1, $first['series_created']);
+        $this->assertSame(0, $second['series_created']);   // already exists
+        $this->assertSame(2, $second['works_grouped']);    // still grouped
+        $this->assertSame(1, Series::count());             // no duplicate
+        $this->assertSame($seriesId, Series::firstOrFail()->id);
+    }
+
+    public function test_rerun_clears_series_and_deletes_it_when_sibling_disappears(): void
+    {
+        $a = $this->seedWork('Z.A.P.', '四畳半物語');
+        $b = $this->seedWork('Z.A.P.', '四畳半物語 二畳目');
+        $this->detector()->detect();
+        $this->assertSame(1, Series::count());
+
+        $b->delete(); // the second volume goes missing from the library / 片方が消える
+        $this->detector()->detect();
+
+        $this->assertNull($a->refresh()->series_id);  // now standalone
+        $this->assertSame(0, Series::count());         // empty auto series removed
+    }
 }

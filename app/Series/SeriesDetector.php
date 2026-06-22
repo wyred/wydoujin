@@ -25,10 +25,13 @@ final class SeriesDetector implements SeriesDetectorContract
         $grouped = 0;
 
         foreach (Mangaka::all() as $mangaka) {
+            // Auto-detection governs only non-locked works. / ロック作品は対象外。
             $works = Work::where('mangaka_id', $mangaka->id)
+                ->where('series_locked', false)
                 ->orderBy('id')
                 ->get(['id', 'title']);
 
+            $groupedIds = [];
             foreach ($this->cluster($works) as $stem => $workIds) {
                 if (count($workIds) < 2) {
                     continue; // singletons stay standalone / 単独作品はシリーズ化しない
@@ -42,7 +45,21 @@ final class SeriesDetector implements SeriesDetectorContract
 
                 Work::whereIn('id', $workIds)->update(['series_id' => $series->id]);
                 $grouped += count($workIds);
+                $groupedIds = array_merge($groupedIds, $workIds);
             }
+
+            // Non-locked works that no longer cluster: drop stale links. / 単独化した作品のリンク解除。
+            Work::where('mangaka_id', $mangaka->id)
+                ->where('series_locked', false)
+                ->whereNotIn('id', $groupedIds ?: [0])
+                ->whereNotNull('series_id')
+                ->update(['series_id' => null]);
+
+            // Delete auto series emptied by this run; manual series are preserved. / 空の自動シリーズ削除。
+            Series::where('mangaka_id', $mangaka->id)
+                ->where('is_auto', true)
+                ->whereDoesntHave('works')
+                ->delete();
         }
 
         return ['series_created' => $created, 'works_grouped' => $grouped];

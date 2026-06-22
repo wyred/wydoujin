@@ -6,6 +6,8 @@ use App\Http\Controllers\CoverController;
 use App\Http\Controllers\MangakaController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReadingProgressController;
+use App\Http\Controllers\SeriesController;
+use App\Http\Controllers\WorkController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [BrowseController::class, 'home'])->name('home');
@@ -28,3 +30,6 @@ Route::post('/work/{work}/progress', [ReadingProgressController::class, 'update'
 
 Route::get('/mangaka', [MangakaController::class, 'index'])->name('mangaka.index');
 Route::get('/mangaka/{mangaka:slug}', [MangakaController::class, 'show'])->name('mangaka.show');
+
+Route::get('/series/{series}', [SeriesController::class, 'show'])->name('series.show');
+Route::get('/work/{work}', [WorkController::class, 'show'])->name('work.show');

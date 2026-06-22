@@ -25,7 +25,9 @@ class ArchiveInspectorTest extends TestCase
     /** @param array<string,string> $entries name => contents */
     private function makeZip(array $entries): string
     {
-        $path = tempnam(sys_get_temp_dir(), 'wyd').'.zip';
+        $path = tempnam(sys_get_temp_dir(), 'wyd'); // tempnam creates this file too
+        $this->tempFiles[] = $path;                  // register it so it's cleaned up
+        $path .= '.zip';
         $this->tempFiles[] = $path;
         $zip = new ZipArchive();
         $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);

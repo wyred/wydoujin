@@ -122,9 +122,10 @@ class SeriesDetectorTest extends TestCase
     {
         $m = $this->mangaka('Z.A.P.');
         $manual = Series::create(['mangaka_id' => $m->id, 'name' => '私家版', 'is_auto' => false]);
-        // Two locked works in a manual series with distinct titles (would not auto-group).
-        $x = $this->seedWork('Z.A.P.', 'バラバラ題その一', ['series_id' => $manual->id, 'series_locked' => true]);
-        $y = $this->seedWork('Z.A.P.', '全然ちがう題', ['series_id' => $manual->id, 'series_locked' => true]);
+        // Two locked works sharing a normalized stem — without the lock filter they would auto-cluster.
+        // ロックがなければ同じステムで自動グループ化される2作品。
+        $x = $this->seedWork('Z.A.P.', '四畳半物語', ['series_id' => $manual->id, 'series_locked' => true]);
+        $y = $this->seedWork('Z.A.P.', '四畳半物語 二畳目', ['series_id' => $manual->id, 'series_locked' => true]);
         $standalone = $this->seedWork('Z.A.P.', 'ぽつん');
 
         $this->detector()->detect();

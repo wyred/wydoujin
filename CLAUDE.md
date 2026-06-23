@@ -2,21 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status: pre-scaffold, plan-driven
+## Project status: built (F1–F3 complete, on `main`)
 
-**The Laravel app does not exist yet.** The repo currently holds only a design spec, an
-implementation plan, and a vendored design system. There is no `composer.json`,
-`package.json`, `artisan`, `app/`, or `routes/` until the foundation plan is executed.
+The app is built and merged. The full loop works end-to-end: **scan → browse/search → read →
+maintain → organize.** Implemented:
+- **Backend:** filename parser, archive (zip) inspection, library scanner + daily scheduled scan,
+  series auto-detection, page/cover serving, reading-progress.
+- **Frontend:** F1 browse (home, mangaka, series, work detail) · F2 immersive Alpine reader ·
+  F3a search + faceted filters (`/browse`) · F3b scan & maintenance (`/maintenance`) · F3c manual
+  series management (merge/split/rename).
 
-Work here is **document-driven**:
-- **Spec** (the "what" and the locked decisions): `docs/superpowers/specs/2026-06-21-wydoujin-design.md`
-- **Plans** (the "how", task-by-task with TDD steps): `docs/superpowers/plans/` — start with `2026-06-21-wydoujin-foundation.md` (Plan 1).
-
-Read the spec before any non-trivial change. Plans are executed with the
-`superpowers:subagent-driven-development` or `superpowers:executing-plans` skill, one task at a
-time, each task a small commit. Plan 1 scaffolds the app (Laravel 13 + health route → SQLite
-config → migrations → models → Tailwind/Alpine → auth gate → Intervention Image → Docker → CI).
-Parser, scanning, series detection, reader, and browse UI are deferred to Plans 2–5.
+Work is **document-driven**, following brainstorm → spec → plan → subagent-driven build:
+- **Specs** (the "what" + locked decisions): `docs/superpowers/specs/` — read
+  `2026-06-21-wydoujin-design.md` (the parent) plus the relevant per-feature design doc before
+  any non-trivial change.
+- **Plans** (the "how", task-by-task TDD): `docs/superpowers/plans/`.
+Execute plans one task at a time, each a small commit, via `superpowers:subagent-driven-development`.
 
 ## What wydoujin is
 
@@ -25,7 +26,11 @@ live on disk as `/library/<mangaka>/<doujin>.zip`. The app scans them into the D
 metadata from filenames, groups works into series, and serves a web reader. Pages stream
 straight from the zip; only resized covers are cached.
 
-## Commands (available only after Plan 1, Task 1 scaffolds the app)
+## Commands
+
+> **Local toolchain quirk (this dev machine):** the default `php` is broken — prefix every
+> `php`/`artisan`/`composer` command with `PATH="/opt/homebrew/opt/php/bin:$PATH"` (PHP 8.5).
+> Node/npm are on the normal PATH. (Inside Docker, php is fine — this is local-dev only.)
 
 ```bash
 php artisan test                       # full suite (in-memory SQLite)
@@ -41,6 +46,34 @@ docker compose exec app php artisan migrate --force
 
 CI runs `php artisan test` on in-memory SQLite (`.github/workflows/ci.yml`); `build.yml` pushes
 the image to GHCR on push to `main` and on `v*` tags.
+
+## Where things live (implemented)
+
+- **Routes:** `routes/web.php` (all behind the `RequirePassword` gate except `/health` + `/login`);
+  `routes/console.php` (the daily scheduled scan).
+- **Browse/discovery:** `BrowseController` (`/`) · `MangakaController` (`/mangaka`, `/mangaka/{slug}` —
+  the latter also hosts series **manage mode**) · `SeriesController` (`/series/{id}`) ·
+  `WorkController` (`/work/{id}`) · `BrowseSearchController` (`/browse` — live search + facets).
+- **Reader/serving:** `ReaderController` (`/work/{id}/read`) · `PageController` (`/work/{id}/page/{n}`,
+  streams bytes from the zip) · `CoverController` (`/covers/{hash}.webp`) · `ReadingProgressController`.
+- **Maintenance & series:** `MaintenanceController` (`/maintenance` + `/scan`) ·
+  `SeriesManagementController` (group/add/ungroup/rename — manual series ops, all DB-only).
+- **Backend services:** `app/Parsing/` (parser + pattern classes) · `app/Archive/` (zip inspection,
+  page reader, cover gen) · `app/Scanning/LibraryScanner.php` · `app/Series/` (`SeriesDetector`,
+  `TitleNormalizer`) · `app/Jobs/ScanLibrary.php`.
+- **UI:** Blade in `resources/views/`; Alpine components registered inline via `alpine:init`;
+  reusable partials in `resources/views/components/` (`x-nav`, `x-cover`, `x-work-card`, `x-badge`,
+  `x-button`, `x-section-heading`).
+
+## Testing & verification
+
+- `php artisan test` runs the full suite on in-memory SQLite (matches CI).
+- **Interactive Alpine behavior** (reader navigation, live search/facets, scan-status polling,
+  series manage mode) is verified with a **browser render-verify gate** (the `agent-browser`
+  skill), **not PHPUnit** — PHPUnit covers routes, queries, and server-rendered wiring. Verify in
+  both light and dark themes. Local-gate notes (serve + seed the dev SQLite; `LIBRARY_PATH`
+  defaults to the non-writable `/library`; a scan needs a running `php artisan queue:work`) are in
+  the project memories.
 
 ## Target architecture
 
@@ -89,8 +122,8 @@ DesignSync tool from claude.ai/design project `7f55e543-1f4e-4574-afa2-2dfda16b2
   `--border-card`, `--focus-ring`) — they re-map automatically in dark mode.
 - **Components are reference only, NOT runtime.** The 8 components (Button, Badge, Card, Input,
   NavBar, OptionChip, Segmented, Textarea) ship as React `.jsx` + `.d.ts`. Vite never imports
-  them. They are the visual/interaction spec to be **re-implemented as Blade + Alpine partials**
-  in Plan 5, keeping the app React-free.
+  them. They are the visual/interaction spec, now **re-implemented as Blade + Alpine partials**
+  in `resources/views/components/` — the app is React-free.
 - **House rules:** one blue accent only · weight ladder is **300/400/600/700 (no 500)** ·
   elevation is a 1px hairline ring, not a shadow (the single `--shadow-product` is reserved for
   imagery) · quiet motion (buttons press to `scale(0.95)`) · 17px body copy. Dark mode is

@@ -67,6 +67,21 @@ test('merge repoints dedupes and flattens', function (): void {
     $this->assertSame(1, $shared->fresh()->tags()->where('tags.id', $b->id)->count()); // deduped
 });
 
+// Line 35: renaming to the same value returns ok immediately, no tombstone created.
+// / 35行目：同じ値へのリネームは即座にokを返し、トゥームストーンは作成されない。
+test('rename to same value is a no-op', function (): void {
+    $w = Work::factory()->create();
+    $tag = $this->attachTag($w, 'circle', 'Z.A.P.');
+
+    $this->postJson('/tags/'.$tag->id.'/rename', ['value' => 'Z.A.P.'])->assertOk();
+
+    $tag->refresh();
+    $this->assertSame('Z.A.P.', $tag->value); // unchanged
+    $this->assertNull($tag->merged_into_id);
+    // No tombstone created for "Z.A.P." → "Z.A.P.". / トゥームストーンは作成されない。
+    $this->assertSame(0, Tag::where('type', 'circle')->where('merged_into_id', $tag->id)->count());
+});
+
 test('merge validates', function (): void {
     $w = Work::factory()->create();
     $a = $this->attachTag($w, 'circle', 'A');

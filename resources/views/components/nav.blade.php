@@ -6,6 +6,7 @@
     <div class="flex items-center" style="gap:var(--space-lg); flex:1;">
         <a href="/" class="no-underline {{ $active === 'home' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Home</a>
         <a href="/mangaka" class="no-underline {{ $active === 'mangaka' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Mangaka</a>
+        <a href="/browse" class="no-underline {{ $active === 'browse' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Browse</a>
     </div>
 
     <button type="button"

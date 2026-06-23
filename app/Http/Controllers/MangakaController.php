@@ -41,6 +41,22 @@ final class MangakaController extends Controller
             ->orderBy('sort_title')
             ->get();
 
-        return view('mangaka.show', compact('mangaka', 'series', 'standalone'));
+        // Flat list for Manage mode: every non-missing work + its current series + a
+        // stem suggestion for the default new-series name. / 管理モード用の平坦リスト。
+        $normalizer = new \App\Series\TitleNormalizer();
+        $manageWorks = $mangaka->works()
+            ->where('is_missing', false)
+            ->with('series:id,name')
+            ->orderBy('sort_title')
+            ->get(['id', 'title', 'series_id', 'mangaka_id'])
+            ->map(fn (\App\Models\Work $w) => [
+                'id' => $w->id,
+                'title' => $w->title,
+                'series' => $w->series?->name,
+                'stem' => $normalizer->stem($w->title),
+            ])->all();
+        $manageSeries = $series->map(fn (\App\Models\Series $s) => ['id' => $s->id, 'name' => $s->name])->values()->all();
+
+        return view('mangaka.show', compact('mangaka', 'series', 'standalone', 'manageWorks', 'manageSeries'));
     }
 }

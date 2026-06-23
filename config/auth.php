@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\User;
-
 return [
 
     /*
@@ -64,7 +62,9 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
+            // Single-user app: no users table / model. Vestigial Laravel default, unused
+            // (auth is the APP_PASSWORD gate). / 単一ユーザー: usersモデル無し（未使用）。
+            'model' => env('AUTH_MODEL'),
         ],
 
         // 'users' => [

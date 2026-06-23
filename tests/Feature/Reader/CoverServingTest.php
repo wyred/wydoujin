@@ -1,43 +1,29 @@
 <?php
 
-namespace Tests\Feature\Reader;
+uses(Tests\Feature\Reader\ServesReadableWork::class);
 
-use Tests\TestCase;
+beforeEach(function (): void {
+    $this->setUpReaderEnv();
+});
 
-class CoverServingTest extends TestCase
-{
-    use ServesReadableWork;
+afterEach(function (): void {
+    $this->tearDownReaderEnv();
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->setUpReaderEnv();
-    }
+test('serves an existing cover as webp', function (): void {
+    $hash = str_repeat('a', 64);
+    $this->writeCover($hash, 'the-cover-bytes');
 
-    protected function tearDown(): void
-    {
-        $this->tearDownReaderEnv();
-        parent::tearDown();
-    }
+    $this->get("/covers/{$hash}.webp")
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/webp');
+});
 
-    public function test_serves_an_existing_cover_as_webp(): void
-    {
-        $hash = str_repeat('a', 64);
-        $this->writeCover($hash, 'the-cover-bytes');
+test('missing cover is 404', function (): void {
+    $this->get('/covers/'.str_repeat('b', 64).'.webp')->assertNotFound();
+});
 
-        $this->get("/covers/{$hash}.webp")
-            ->assertOk()
-            ->assertHeader('Content-Type', 'image/webp');
-    }
-
-    public function test_missing_cover_is_404(): void
-    {
-        $this->get('/covers/'.str_repeat('b', 64).'.webp')->assertNotFound();
-    }
-
-    public function test_non_hash_path_does_not_match_the_route(): void
-    {
-        // The [0-9a-f]{64} constraint rejects traversal / non-hex names → no route → 404.
-        $this->get('/covers/not-a-valid-hash.webp')->assertNotFound();
-    }
-}
+test('non hash path does not match the route', function (): void {
+    // The [0-9a-f]{64} constraint rejects traversal / non-hex names → no route → 404.
+    $this->get('/covers/not-a-valid-hash.webp')->assertNotFound();
+});

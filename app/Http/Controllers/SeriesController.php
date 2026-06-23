@@ -12,7 +12,7 @@ final class SeriesController extends Controller
         $series->load('mangaka');
         $works = $series->works()
             ->where('is_missing', false)
-            ->with('readingProgress')
+            ->with('readingProgress', 'tags')
             ->orderBy('sort_title')
             ->get();
 

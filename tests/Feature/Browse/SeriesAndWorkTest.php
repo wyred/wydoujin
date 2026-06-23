@@ -7,11 +7,12 @@ use App\Models\ReadingProgress;
 use App\Models\Series;
 use App\Models\Work;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsTags;
 use Tests\TestCase;
 
 class SeriesAndWorkTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, SeedsTags;
 
     protected function setUp(): void
     {
@@ -34,22 +35,24 @@ class SeriesAndWorkTest extends TestCase
     public function test_work_detail_shows_metadata_badges_progress_and_read_cta(): void
     {
         $m = Mangaka::factory()->create(['name' => 'Z.A.P.']);
-        $work = Work::factory()->for($m)->create([
-            'title' => '四畳半物語', 'circle' => 'Z.A.P.', 'author' => 'ズッキーニ',
-            'parody' => 'オリジナル', 'event' => 'C89', 'flags' => ['DL版'],
-            'page_count' => 24, 'cover_path' => 'covers/h.webp',
-        ]);
+        $work = Work::factory()->for($m)->create(['title' => '四畳半物語', 'page_count' => 24, 'cover_path' => 'covers/h.webp']);
+        $this->attachTag($work, 'circle', 'Z.A.P.');
+        $this->attachTag($work, 'author', 'ズッキーニ');
+        $this->attachTag($work, 'parody', 'オリジナル');
+        $this->attachTag($work, 'event', 'C89');
+        $this->attachTag($work, 'flag', 'DL版');
         ReadingProgress::create(['work_id' => $work->id, 'current_page' => 3]);
 
         $this->get('/work/'.$work->id)->assertOk()
             ->assertSee('四畳半物語')
             ->assertSee('ズッキーニ')
-            ->assertSee('オリジナル')       // parody badge
-            ->assertSee('C89')              // event badge
-            ->assertSee('DL版')             // flag badge
-            ->assertSee('24 pages')         // page count
-            ->assertSee('3/24')             // progress
-            ->assertSee('href="/work/'.$work->id.'/read"', false)   // Read CTA → reader
-            ->assertSee('Continue');                                // dynamic label (in-progress)
+            ->assertSee('オリジナル')
+            ->assertSee('C89')
+            ->assertSee('DL版')
+            ->assertSee('24 pages')
+            ->assertSee('3/24')
+            ->assertSee('href="'.e('/browse?'.http_build_query(['parody' => ['オリジナル']])).'"', false) // clickable tag
+            ->assertSee('href="/work/'.$work->id.'/read"', false)
+            ->assertSee('Continue');
     }
 }

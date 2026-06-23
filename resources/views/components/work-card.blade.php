@@ -11,8 +11,9 @@
 
     <div style="margin-top:var(--space-xs);">
         <div class="truncate" style="font:var(--type-caption-strong); color:var(--text-heading);">{{ $work->title }}</div>
-        @if ($work->circle)
-            <div class="truncate" style="font:var(--type-fine); color:var(--text-muted);">{{ $work->circle }}</div>
+        @php $circle = $work->tags->firstWhere('type', 'circle'); @endphp
+        @if ($circle)
+            <div class="truncate" style="font:var(--type-fine); color:var(--text-muted);">{{ $circle->value }}</div>
         @endif
 
         @if ($progress && $progress->current_page > 0)

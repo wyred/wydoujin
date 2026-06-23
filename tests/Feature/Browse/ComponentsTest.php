@@ -7,11 +7,12 @@ use App\Models\ReadingProgress;
 use App\Models\Work;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Tests\Concerns\SeedsTags;
 use Tests\TestCase;
 
 class ComponentsTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, SeedsTags;
 
     public function test_cover_renders_image_when_path_present(): void
     {
@@ -29,11 +30,11 @@ class ComponentsTest extends TestCase
 
     public function test_work_card_links_to_work_and_shows_progress(): void
     {
-        $work = Work::factory()->for(Mangaka::factory())->create([
-            'title' => 'カードの題', 'circle' => 'サークルX', 'page_count' => 20, 'cover_path' => 'covers/h.webp',
-        ]);
+        // create the work without the scalar, then attach the circle tag
+        $work = Work::factory()->for(Mangaka::factory())->create(['title' => 'カードの題', 'page_count' => 20, 'cover_path' => 'covers/h.webp']);
+        $this->attachTag($work, 'circle', 'サークルX');
         ReadingProgress::create(['work_id' => $work->id, 'current_page' => 5]);
-        $work->load('readingProgress');
+        $work->load('readingProgress', 'tags');
 
         $html = Blade::render('<x-work-card :work="$work" />', ['work' => $work]);
         $this->assertStringContainsString('href="/work/'.$work->id.'"', $html);

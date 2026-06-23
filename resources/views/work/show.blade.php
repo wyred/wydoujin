@@ -12,16 +12,19 @@
             <div style="flex:1; min-width:260px;">
                 <h1 style="font:var(--type-display-md); color:var(--text-heading); letter-spacing:var(--tracking-display-md);">{{ $work->title }}</h1>
 
+                @php $byType = $work->tags->groupBy('type'); @endphp
                 <div style="margin-top:var(--space-xs); font:var(--type-body); color:var(--text-muted);">
                     <a href="/mangaka/{{ $work->mangaka->slug }}" class="no-underline" style="color:var(--text-link);">{{ $work->mangaka->name }}</a>
-                    @if ($work->circle)<span> · {{ $work->circle }}</span>@endif
-                    @if ($work->author)<span> · {{ $work->author }}</span>@endif
+                    @foreach (($byType['circle'] ?? []) as $tag)<span> · </span><a href="{{ $tag->browseUrl() }}" class="no-underline" style="color:var(--text-link);">{{ $tag->value }}</a>@endforeach
+                    @foreach (($byType['author'] ?? []) as $tag)<span> · </span><a href="{{ $tag->browseUrl() }}" class="no-underline" style="color:var(--text-link);">{{ $tag->value }}</a>@endforeach
                 </div>
 
                 <div class="flex" style="gap:var(--space-xs); flex-wrap:wrap; margin-top:var(--space-md);">
-                    @if ($work->parody)<x-badge>{{ $work->parody }}</x-badge>@endif
-                    @if ($work->event)<x-badge>{{ $work->event }}</x-badge>@endif
-                    @foreach (($work->flags ?? []) as $flag)<x-badge>{{ $flag }}</x-badge>@endforeach
+                    @foreach (['parody', 'event', 'flag', 'theme'] as $t)
+                        @foreach (($byType[$t] ?? []) as $tag)
+                            <a href="{{ $tag->browseUrl() }}" class="no-underline"><x-badge>{{ $tag->value }}</x-badge></a>
+                        @endforeach
+                    @endforeach
                 </div>
 
                 <p style="margin-top:var(--space-md); font:var(--type-body); color:var(--text-body);">

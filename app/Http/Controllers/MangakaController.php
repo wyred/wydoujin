@@ -31,14 +31,14 @@ final class MangakaController extends Controller
     {
         $series = $mangaka->series()
             ->whereHas('works', fn ($q) => $q->where('is_missing', false))
-            ->with(['works' => fn ($q) => $q->where('is_missing', false)->orderBy('sort_title')])
+            ->with(['works' => fn ($q) => $q->where('is_missing', false)->with('tags')->orderBy('sort_title')])
             ->orderBy('name')
             ->get();
 
         $standalone = $mangaka->works()
             ->where('is_missing', false)
             ->whereNull('series_id')
-            ->with('readingProgress')
+            ->with('readingProgress', 'tags')
             ->orderBy('sort_title')
             ->get();
 

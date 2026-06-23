@@ -14,7 +14,7 @@ final class BrowseController extends Controller
             ->where('current_page', '>', 0)
             ->where('is_completed', false)
             ->whereHas('work', fn ($q) => $q->where('is_missing', false))
-            ->with('work.mangaka', 'work.readingProgress')
+            ->with('work.mangaka', 'work.readingProgress', 'work.tags')
             ->orderByDesc('last_read_at')
             ->limit(12)
             ->get()
@@ -22,7 +22,7 @@ final class BrowseController extends Controller
 
         $recentlyAdded = Work::query()
             ->where('is_missing', false)
-            ->with('mangaka', 'readingProgress')
+            ->with('mangaka', 'readingProgress', 'tags')
             ->latest()
             ->limit(12)
             ->get();

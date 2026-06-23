@@ -3,7 +3,10 @@
 @php
     $initial = [
         'q' => $search->q ?? '',
-        'selected' => ['circle' => $search->circle, 'parody' => $search->parody, 'event' => $search->event],
+        'selected' => [
+            'circle' => $search->circle, 'parody' => $search->parody, 'event' => $search->event,
+            'author' => $search->author, 'flag' => $search->flag, 'theme' => $search->theme,
+        ],
         'facets' => $facets,
         'total' => $total,
         'page' => $works->currentPage(),
@@ -91,8 +94,8 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('browse', (initial) => ({
             q: initial.q ?? '',
-            selected: initial.selected ?? { circle: [], parody: [], event: [] },
-            facets: initial.facets ?? { circle: [], parody: [], event: [] },
+            selected: initial.selected ?? { circle: [], parody: [], event: [], author: [], flag: [], theme: [] },
+            facets: initial.facets ?? { circle: [], parody: [], event: [], author: [], flag: [], theme: [] },
             total: initial.total ?? 0,
             page: initial.page ?? 1,
             hasMore: initial.hasMore ?? false,
@@ -104,9 +107,12 @@
                 { key: 'circle', label: 'Circle' },
                 { key: 'parody', label: 'Parody' },
                 { key: 'event', label: 'Event' },
+                { key: 'author', label: 'Author' },
+                { key: 'flag', label: 'Flag' },
+                { key: 'theme', label: 'Theme' },
             ],
-            expanded: { circle: false, parody: false, event: false },
-            within: { circle: '', parody: '', event: '' },
+            expanded: { circle: false, parody: false, event: false, author: false, flag: false, theme: false },
+            within: { circle: '', parody: '', event: '', author: '', flag: '', theme: '' },
             _debounce: null,
             _reqId: 0,
 
@@ -117,7 +123,7 @@
                 });
             },
 
-            dims() { return ['circle', 'parody', 'event']; },
+            dims() { return ['circle', 'parody', 'event', 'author', 'flag', 'theme']; },
             isChecked(dim, value) { return this.selected[dim].includes(value); },
 
             visibleRows(dim) {
@@ -138,11 +144,11 @@
             },
             clear() {
                 this.q = '';
-                this.selected = { circle: [], parody: [], event: [] };
+                this.selected = { circle: [], parody: [], event: [], author: [], flag: [], theme: [] };
                 this.refresh();
             },
             activeCount() {
-                return this.selected.circle.length + this.selected.parody.length + this.selected.event.length + (this.q ? 1 : 0);
+                return this.dims().reduce((n, d) => n + this.selected[d].length, 0) + (this.q ? 1 : 0);
             },
 
             buildQuery(extra = {}) {

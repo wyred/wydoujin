@@ -12,6 +12,7 @@ use App\Http\Controllers\ReadingProgressController;
 use App\Http\Controllers\SeriesController;
 use App\Http\Controllers\SeriesManagementController;
 use App\Http\Controllers\WorkController;
+use App\Http\Controllers\TagController;
 use App\Http\Controllers\WorkTagController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,6 +49,9 @@ Route::post('/series/ungroup', [SeriesManagementController::class, 'ungroup'])->
 Route::post('/series/{series}/add', [SeriesManagementController::class, 'add'])->name('series.add');
 Route::post('/series/{series}/rename', [SeriesManagementController::class, 'rename'])->name('series.rename');
 Route::get('/tags/suggest', [WorkTagController::class, 'suggest'])->name('tags.suggest');
+Route::get('/tags', [TagController::class, 'index'])->name('tags.index');
+Route::post('/tags/{tag}/rename', [TagController::class, 'rename'])->name('tags.rename');
+Route::post('/tags/{tag}/merge', [TagController::class, 'merge'])->name('tags.merge');
 
 Route::post('/work/{work}/tags/attach', [WorkTagController::class, 'attach'])->name('work.tags.attach');
 Route::post('/work/{work}/tags/detach', [WorkTagController::class, 'detach'])->name('work.tags.detach');

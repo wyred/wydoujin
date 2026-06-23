@@ -7,6 +7,7 @@
         <a href="/" class="no-underline {{ $active === 'home' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Home</a>
         <a href="/mangaka" class="no-underline {{ $active === 'mangaka' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Mangaka</a>
         <a href="/browse" class="no-underline {{ $active === 'browse' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Browse</a>
+        <a href="/tags" class="no-underline {{ $active === 'tags' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Tags</a>
         <a href="/maintenance" class="no-underline {{ $active === 'maintenance' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Maintenance</a>
     </div>
 

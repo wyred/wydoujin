@@ -10,3 +10,9 @@ pest()->extend(TestCase::class)
 
 // Unit tests use the base TestCase, no DB reset. / Unitは基底TestCase（DBリセットなし）。
 pest()->extend(TestCase::class)->in('Unit');
+
+// Browser tests (Pest 4 + Playwright) drive the real app; reset DB per test. Run explicitly
+// (`pest tests/Browser`), kept out of the default suite. / ブラウザテスト（明示実行）。
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
+    ->in('Browser');

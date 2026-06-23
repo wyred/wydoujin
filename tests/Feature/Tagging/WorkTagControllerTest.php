@@ -76,4 +76,15 @@ class WorkTagControllerTest extends TestCase
 
         $this->getJson('/tags/suggest?type=circle&q=Zu')->assertOk()->assertExactJson(['Zucchini']);
     }
+
+    public function test_detach_rejects_a_tag_not_on_the_work(): void
+    {
+        $work = Work::factory()->create();
+        $this->attachTag($work, 'circle', 'A');
+        $foreign = Tag::create(['type' => 'circle', 'value' => 'Foreign']); // not attached to $work
+
+        $this->postJson('/work/'.$work->id.'/tags/detach', ['tag_id' => $foreign->id])->assertStatus(422);
+
+        $this->assertFalse($work->fresh()->tags_locked); // a no-op detach must not flip the lock
+    }
 }

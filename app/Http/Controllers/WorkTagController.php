@@ -33,6 +33,8 @@ final class WorkTagController extends Controller
     public function detach(Request $request, Work $work)
     {
         $data = $request->validate(['tag_id' => ['required', 'integer']]);
+        // Only detach a tag the work actually has — a foreign id must not flip the lock. / 紐付くタグのみ。
+        abort_unless($work->tags()->where('tags.id', $data['tag_id'])->exists(), 422, 'Tag is not on this work.');
         $work->tags()->detach($data['tag_id']);
         $work->update(['tags_locked' => true]);
 

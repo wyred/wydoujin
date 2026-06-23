@@ -420,3 +420,25 @@ Expected: ALL suites green (archive, parsing, scanning, series, reader-backend, 
 **Cross-task note:** Task 1 updates `SeriesAndWorkTest` (the F1 CTA assertion) because the CTA target changed `/page/1` → `/read`; without it the full suite would fail in Step 9.
 
 **Out of scope (later):** long-strip/continuous, double-page, zoom/pan, thumbnails, next-in-series; F3 surfaces.
+
+---
+
+## Verification Record (2026-06-23)
+
+**Task 1** committed in `3b22cf2`. **Task 2** build + full-suite gate green (98 tests / 366 assertions; bundled CSS carries `--color-primary` ×10 and `--reader-scrim` ×1).
+
+**Visual + interaction gate (browser-driven):** seeded a real 12-page zip (GD-rendered PNGs, distinct per-page colours) + DB rows, served via `php -S` with a `LIBRARY_PATH`/`DATA_PATH`-injecting router, and drove `/work/1/read` in a headless browser. All behaviors pass, **no console errors**, in both light and dark site themes:
+
+- Resume at saved page (3); completed work → page 1; `?page` clamp (also unit-tested).
+- Immersive full-viewport, **backdrop `rgb(0,0,0)` in both themes** (no browse nav).
+- RTL keys ←=next / →=prev; LTR keys reversed (persisted `wyd-reader-dir`).
+- Click zones: left=next, right=prev (RTL); center tap toggles chrome (touch tap; on desktop the pre-click `mousemove` reveals first — expected).
+- Chrome auto-hides after ~2.5 s idle, reveals on movement; settings popover (direction + fit) renders with the blue active chip.
+- Fit-height (letterboxed) ↔ fit-width (fills width 1265/1280, scrolls), persisted `wyd-reader-fit`.
+- Page slider jumps (`x-model` binding); debounced `POST .../progress` → **200** (CSRF OK) → DB `current_page` updates; last page sets `is_completed` + `completed_at`; bounds clamp at 1 and `page_count`.
+- Page route streams real bytes with `content_hash-n` ETag; out-of-range → 404; cover webp serves.
+- CTA label verified across all three states: **Read** / **Continue** / **Read again**.
+
+**One fix applied during the gate:** the page slider was a native `<input type=range>` using the browser-default (green) accent, breaking the §13 "one blue accent only" rule — tied it to `accent-color:var(--color-primary)` (now `rgb(41,151,255)`). Tests remain green.
+
+**Result: F2 (reader) complete.** Next phase is **F3** (search, filters, scan/maintenance, manual series merge) — a separate sub-project needing its own design + plan.

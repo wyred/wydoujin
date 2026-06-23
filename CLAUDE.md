@@ -2,15 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status: built (F1–F3 complete, on `main`)
+## Project status: built (F1–F4 complete, on `main`)
 
 The app is built and merged. The full loop works end-to-end: **scan → browse/search → read →
-maintain → organize.** Implemented:
+maintain → organize/tag.** Implemented:
 - **Backend:** filename parser, archive (zip) inspection, library scanner + daily scheduled scan,
-  series auto-detection, page/cover serving, reading-progress.
+  series auto-detection, **normalized metadata tags** (via `WorkTagSync`), page/cover serving,
+  reading-progress.
 - **Frontend:** F1 browse (home, mangaka, series, work detail) · F2 immersive Alpine reader ·
   F3a search + faceted filters (`/browse`) · F3b scan & maintenance (`/maintenance`) · F3c manual
-  series management (merge/split/rename).
+  series management (merge/split/rename) · F4 multi-value tags (per-work tag editor + `/tags`
+  global rename/merge; faceting over a normalized tag model).
 
 Work is **document-driven**, following brainstorm → spec → plan → subagent-driven build:
 - **Specs** (the "what" + locked decisions): `docs/superpowers/specs/` — read
@@ -23,7 +25,7 @@ Execute plans one task at a time, each a small commit, via `superpowers:subagent
 
 A self-hosted, **single-user** reading server for a doujin/manga library (Kavita-like). Files
 live on disk as `/library/<mangaka>/<doujin>.zip`. The app scans them into the DB, parses
-metadata from filenames, groups works into series, and serves a web reader. Pages stream
+metadata from filenames into normalized tags, groups works into series, and serves a web reader. Pages stream
 straight from the zip; only resized covers are cached.
 
 ## Commands
@@ -58,9 +60,12 @@ the image to GHCR on push to `main` and on `v*` tags.
   streams bytes from the zip) · `CoverController` (`/covers/{hash}.webp`) · `ReadingProgressController`.
 - **Maintenance & series:** `MaintenanceController` (`/maintenance` + `/scan`) ·
   `SeriesManagementController` (group/add/ungroup/rename — manual series ops, all DB-only).
+- **Tags (F4):** `TagController` (`/tags` — global rename/merge, durable via merge-alias) ·
+  `WorkTagController` (`/work/{id}/tags/{attach,detach,reset}` + `/tags/suggest` — per-work editing).
 - **Backend services:** `app/Parsing/` (parser + pattern classes) · `app/Archive/` (zip inspection,
   page reader, cover gen) · `app/Scanning/LibraryScanner.php` · `app/Series/` (`SeriesDetector`,
-  `TitleNormalizer`) · `app/Jobs/ScanLibrary.php`.
+  `TitleNormalizer`) · `app/Tagging/` (`WorkTagSync` — derive/sync tags, resolve aliases, prune
+  orphans; `LegacyScalarBackfill`) · `app/Jobs/ScanLibrary.php`.
 - **UI:** Blade in `resources/views/`; Alpine components registered inline via `alpine:init`;
   reusable partials in `resources/views/components/` (`x-nav`, `x-cover`, `x-work-card`, `x-badge`,
   `x-button`, `x-section-heading`).
@@ -69,7 +74,8 @@ the image to GHCR on push to `main` and on `v*` tags.
 
 - `php artisan test` runs the full suite on in-memory SQLite (matches CI).
 - **Interactive Alpine behavior** (reader navigation, live search/facets, scan-status polling,
-  series manage mode) is verified with a **browser render-verify gate** (the `agent-browser`
+  series manage mode, the tag editor + `/tags` rename/merge) is verified with a **browser
+  render-verify gate** (the `agent-browser`
   skill), **not PHPUnit** — PHPUnit covers routes, queries, and server-rendered wiring. Verify in
   both light and dark themes. Local-gate notes (serve + seed the dev SQLite; `LIBRARY_PATH`
   defaults to the non-writable `/library`; a scan needs a running `php artisan queue:work`) are in
@@ -86,10 +92,11 @@ the image to GHCR on push to `main` and on `v*` tags.
 - **Scanning & cover generation are queued jobs**, processed sequentially by the one worker.
   Covers are generated with Intervention Image → `webp` under `/data/covers/`.
 
-### Data model (5 tables)
-`mangaka` (one per top folder) · `series` (per-mangaka grouping) · `works` (one per `.zip`) ·
-`reading_progress` (one per work, kept separate so rescans never disturb progress) · `scans`
-(scan history/status).
+### Data model (7 tables)
+`mangaka` (one per top folder) · `series` (per-mangaka grouping) · `works` (one per `.zip`;
+metadata lives in tags, plus a `tags_locked` flag) · `tags` (normalized `type`+`value`, with a
+`merged_into_id` alias pointer) · `work_tag` (work↔tag pivot) · `reading_progress` (one per work,
+kept separate so rescans never disturb progress) · `scans` (scan history/status).
 
 ## Invariants — get these wrong and later plans break
 
@@ -109,6 +116,15 @@ the image to GHCR on push to `main` and on `v*` tags.
 - **Series detection** runs **per-mangaka only** (series never cross folders). **Never group by
   parody** (the Fate/Grand-Order trap). Manual merge/split/rename sets `series_locked` on the
   affected works, and auto-detection **never undoes a locked work**.
+- **Metadata is normalized tags, not columns.** `tags(type, value)` + a `work_tag` pivot replaced
+  the old scalar `circle/parody/event/author/language` + `flags` columns. Types:
+  `circle·parody·event·author·flag` (scanner-derived from the parser) + `theme` (manual-only);
+  `language` dropped. `WorkTagSync` writes a work's tags at scan time (one per parsed field —
+  **normalize-only, no splitting**) and prunes orphans. Browse facets/filters run over the pivot
+  (**6 dims**); the `/browse` URL keeps type-keyed value arrays — **no slugs** (Japanese values).
+  Curation is **durable across rescans**: per-work edits set `works.tags_locked` so the scanner
+  skips that work (mirror of `series_locked`); global rename/merge writes a `tags.merged_into_id`
+  tombstone the scanner resolves to the canonical tag on every scan.
 
 ## Design system (vendored Apple Design System)
 

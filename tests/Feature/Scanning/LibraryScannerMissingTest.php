@@ -1,96 +1,76 @@
 <?php
 
-namespace Tests\Feature\Scanning;
-
 use App\Models\ReadingProgress;
 use App\Models\Work;
 use App\Scanning\LibraryScanner;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use Tests\Feature\Scanning\BuildsLibraryFixtures;
 
-class LibraryScannerMissingTest extends TestCase
-{
-    use RefreshDatabase;
-    use BuildsLibraryFixtures;
+uses(BuildsLibraryFixtures::class);
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->bootLibrary();
-    }
+beforeEach(fn () => $this->bootLibrary());
+afterEach(fn () => $this->cleanLibrary());
 
-    protected function tearDown(): void
-    {
-        $this->cleanLibrary();
-        parent::tearDown();
-    }
+test('removed file is flagged missing and keeps progress', function (): void {
+    $path = $this->makeDoujin('Circle', 'Title');
+    app(LibraryScanner::class)->scan();
+    $work = Work::firstOrFail();
+    ReadingProgress::create(['work_id' => $work->id, 'current_page' => 3]);
 
-    public function test_removed_file_is_flagged_missing_and_keeps_progress(): void
-    {
-        $path = $this->makeDoujin('Circle', 'Title');
-        app(LibraryScanner::class)->scan();
-        $work = Work::firstOrFail();
-        ReadingProgress::create(['work_id' => $work->id, 'current_page' => 3]);
+    $this->travel(1)->days();
+    unlink($path); // file disappears
+    $stats = app(LibraryScanner::class)->scan();
 
-        $this->travel(1)->days();
-        unlink($path); // file disappears
-        $stats = app(LibraryScanner::class)->scan();
+    $this->assertSame(1, $stats['missing']);
+    $work->refresh();
+    $this->assertTrue($work->is_missing);
+    $this->assertSame(3, $work->readingProgress->current_page); // never deleted
+});
 
-        $this->assertSame(1, $stats['missing']);
-        $work->refresh();
-        $this->assertTrue($work->is_missing);
-        $this->assertSame(3, $work->readingProgress->current_page); // never deleted
-    }
+test('reappeared file is unflagged', function (): void {
+    $this->makeDoujin('Circle', 'Title', ['001.jpg']);
+    app(LibraryScanner::class)->scan();
+    $work = Work::firstOrFail();
+    $work->update(['is_missing' => true]); // simulate previously missing
 
-    public function test_reappeared_file_is_unflagged(): void
-    {
-        $this->makeDoujin('Circle', 'Title', ['001.jpg']);
-        app(LibraryScanner::class)->scan();
-        $work = Work::firstOrFail();
-        $work->update(['is_missing' => true]); // simulate previously missing
+    $stats = app(LibraryScanner::class)->scan();
 
-        $stats = app(LibraryScanner::class)->scan();
+    $work->refresh();
+    $this->assertFalse($work->is_missing);
+    $this->assertSame(0, $stats['missing']);
+});
 
-        $work->refresh();
-        $this->assertFalse($work->is_missing);
-        $this->assertSame(0, $stats['missing']);
-    }
+test('corrupt zip increments failed and scan continues', function (): void {
+    $this->makeDoujin('Circle', 'Good', ['001.jpg']);
+    // A .zip that is not a valid archive.
+    file_put_contents($this->libraryPath.'/Circle/Bad.zip', 'not a zip');
 
-    public function test_corrupt_zip_increments_failed_and_scan_continues(): void
-    {
-        $this->makeDoujin('Circle', 'Good', ['001.jpg']);
-        // A .zip that is not a valid archive.
-        file_put_contents($this->libraryPath.'/Circle/Bad.zip', 'not a zip');
+    $stats = app(LibraryScanner::class)->scan();
 
-        $stats = app(LibraryScanner::class)->scan();
+    $this->assertSame(1, $stats['added']);  // the good one
+    $this->assertSame(1, $stats['failed']); // the bad one
+    $this->assertSame(1, Work::count());
+});
 
-        $this->assertSame(1, $stats['added']);  // the good one
-        $this->assertSame(1, $stats['failed']); // the bad one
-        $this->assertSame(1, Work::count());
-    }
+test('content replaced at same path adds new work and flags old missing', function (): void {
+    $path = $this->makeDoujin('Circle', 'Title', ['001.jpg']);
+    app(LibraryScanner::class)->scan();
+    $old = Work::firstOrFail();
+    $oldHash = $old->content_hash;
 
-    public function test_content_replaced_at_same_path_adds_new_work_and_flags_old_missing(): void
-    {
-        $path = $this->makeDoujin('Circle', 'Title', ['001.jpg']);
-        app(LibraryScanner::class)->scan();
-        $old = Work::firstOrFail();
-        $oldHash = $old->content_hash;
+    $this->travel(1)->days();
+    // Replace the zip's CONTENT at the same path (different entry list → different content_hash).
+    unlink($path);
+    $this->makeDoujin('Circle', 'Title', ['001.jpg', '002.jpg', '003.jpg']);
 
-        $this->travel(1)->days();
-        // Replace the zip's CONTENT at the same path (different entry list → different content_hash).
-        unlink($path);
-        $this->makeDoujin('Circle', 'Title', ['001.jpg', '002.jpg', '003.jpg']);
+    $stats = app(LibraryScanner::class)->scan();
 
-        $stats = app(LibraryScanner::class)->scan();
-
-        $this->assertSame(1, $stats['added']);   // new content = new work
-        $this->assertSame(1, $stats['missing']); // old content gone → missing
-        $this->assertSame(2, Work::count());
-        $old->refresh();
-        $this->assertTrue($old->is_missing);                          // old flagged missing
-        $this->assertSame($oldHash, $old->content_hash);              // its identity unchanged
-        $new = Work::where('is_missing', false)->firstOrFail();
-        $this->assertNotSame($oldHash, $new->content_hash);           // genuinely new identity
-        $this->assertSame($old->relative_path, $new->relative_path);  // share the path (benign; old is hidden)
-    }
-}
+    $this->assertSame(1, $stats['added']);   // new content = new work
+    $this->assertSame(1, $stats['missing']); // old content gone → missing
+    $this->assertSame(2, Work::count());
+    $old->refresh();
+    $this->assertTrue($old->is_missing);                          // old flagged missing
+    $this->assertSame($oldHash, $old->content_hash);              // its identity unchanged
+    $new = Work::where('is_missing', false)->firstOrFail();
+    $this->assertNotSame($oldHash, $new->content_hash);           // genuinely new identity
+    $this->assertSame($old->relative_path, $new->relative_path);  // share the path (benign; old is hidden)
+});

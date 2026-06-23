@@ -10,6 +10,13 @@ class SchemaTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_tag_tables_and_lock_column_exist(): void
+    {
+        $this->assertTrue(Schema::hasTable('tags'));
+        $this->assertTrue(Schema::hasTable('work_tag'));
+        $this->assertTrue(Schema::hasColumn('works', 'tags_locked'));
+    }
+
     public function test_core_tables_and_key_columns_exist(): void
     {
         $this->assertTrue(Schema::hasTable('mangaka'));

@@ -25,7 +25,7 @@ final class MaintenanceController extends Controller
             'history' => Scan::latest()->limit(self::HISTORY_LIMIT)->get()
                 ->map(fn (Scan $s) => $this->serialize($s))->all(),
             'missing' => $missing,
-            'missingCount' => Work::where('is_missing', true)->count(),
+            'missingCount' => $missing->total(),
         ]);
     }
 

@@ -64,6 +64,17 @@ class MaintenanceTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_scan_does_not_double_dispatch_when_a_queued_scan_exists(): void
+    {
+        Queue::fake();
+        $queued = Scan::create(['status' => 'queued', 'triggered_by' => 'manual']);
+
+        $this->postJson('/scan')->assertStatus(202)->assertJsonPath('scan.id', $queued->id);
+
+        $this->assertSame(1, Scan::count());
+        Queue::assertNothingPushed();
+    }
+
     public function test_status_returns_latest_scan_or_null(): void
     {
         $this->getJson('/maintenance/status')->assertOk()->assertJsonPath('scan', null);

@@ -108,9 +108,9 @@
                     const res = await fetch('/maintenance/status', { headers: { 'Accept': 'application/json' } });
                     const data = await res.json();
                     this.latest = data.scan;
-                    if (this.latest && !this.isActive(this.latest)) {
+                    if (!this.isActive(this.latest)) {
                         clearInterval(this._poll);
-                        if (!this.history.some((s) => s.id === this.latest.id)) {
+                        if (this.latest && !this.history.some((s) => s.id === this.latest.id)) {
                             this.history.unshift(this.latest);
                         }
                     }

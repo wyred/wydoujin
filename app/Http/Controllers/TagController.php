@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tag;
 use App\Parsing\ParsedName;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Global tag management — rename / merge (F4). Both write a merge-alias so the
@@ -61,11 +62,14 @@ final class TagController extends Controller
     /** Repoint $from's works to $into, tombstone $from, flatten chains. / 統合本体。 */
     private function mergeInto(Tag $from, Tag $into)
     {
-        $workIds = $from->works()->pluck('works.id')->all();
-        $into->works()->syncWithoutDetaching($workIds);
-        $from->works()->detach();
-        $from->update(['merged_into_id' => $into->id]);
-        Tag::where('merged_into_id', $from->id)->update(['merged_into_id' => $into->id]);
+        // Atomic: repoint $from's works to $into, tombstone $from, flatten chains. / 統合は原子的に。
+        DB::transaction(function () use ($from, $into): void {
+            $workIds = $from->works()->pluck('works.id')->all();
+            $into->works()->syncWithoutDetaching($workIds);
+            $from->works()->detach();
+            $from->update(['merged_into_id' => $into->id]);
+            Tag::where('merged_into_id', $from->id)->update(['merged_into_id' => $into->id]);
+        });
 
         return response()->json(['ok' => true]);
     }

@@ -55,7 +55,7 @@
     {{-- Bottom page slider --}}
     <div x-show="chrome" x-transition.opacity class="absolute bottom-0 inset-x-0 z-20 flex items-center"
          style="gap:var(--space-md); padding:var(--space-sm) var(--space-lg); background:var(--reader-scrim);">
-        <input type="range" min="1" :max="pages" x-model.number="page" class="w-full" :dir="dir === 'rtl' ? 'rtl' : 'ltr'" aria-label="Jump to page">
+        <input type="range" min="1" :max="pages" x-model.number="page" class="w-full" style="accent-color:var(--color-primary);" :dir="dir === 'rtl' ? 'rtl' : 'ltr'" aria-label="Jump to page">
     </div>
 </div>
 

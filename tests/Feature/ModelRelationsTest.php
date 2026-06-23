@@ -1,44 +1,33 @@
 <?php
 
-namespace Tests\Feature;
-
 use App\Models\Mangaka;
 use App\Models\ReadingProgress;
 use App\Models\Series;
 use App\Models\Work;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 
-class ModelRelationsTest extends TestCase
-{
-    use RefreshDatabase;
+test('relationships and casts', function (): void {
+    $mangaka = Mangaka::factory()->create();
+    $series = Series::factory()->for($mangaka)->create();
+    $work = Work::factory()
+        ->for($mangaka)
+        ->for($series)
+        ->create(['entries' => ['001.jpg', '002.jpg']]);
 
-    public function test_relationships_and_casts(): void
-    {
-        $mangaka = Mangaka::factory()->create();
-        $series = Series::factory()->for($mangaka)->create();
-        $work = Work::factory()
-            ->for($mangaka)
-            ->for($series)
-            ->create(['entries' => ['001.jpg', '002.jpg']]);
+    ReadingProgress::create(['work_id' => $work->id, 'current_page' => 3]);
 
-        ReadingProgress::create(['work_id' => $work->id, 'current_page' => 3]);
+    $this->assertTrue($mangaka->works->contains($work));
+    $this->assertTrue($mangaka->series->contains($series));
+    $this->assertTrue($series->works->contains($work));
+    $this->assertEquals($mangaka->id, $work->mangaka->id);
+    $this->assertEquals($series->id, $work->series->id);
+    $this->assertSame(['001.jpg', '002.jpg'], $work->entries);
+    $this->assertSame(3, $work->readingProgress->current_page);
+});
 
-        $this->assertTrue($mangaka->works->contains($work));
-        $this->assertTrue($mangaka->series->contains($series));
-        $this->assertTrue($series->works->contains($work));
-        $this->assertEquals($mangaka->id, $work->mangaka->id);
-        $this->assertEquals($series->id, $work->series->id);
-        $this->assertSame(['001.jpg', '002.jpg'], $work->entries);
-        $this->assertSame(3, $work->readingProgress->current_page);
-    }
+test('work without series has null series', function (): void {
+    $mangaka = Mangaka::factory()->create();
+    $work = Work::factory()->for($mangaka)->create();
 
-    public function test_work_without_series_has_null_series(): void
-    {
-        $mangaka = Mangaka::factory()->create();
-        $work = Work::factory()->for($mangaka)->create();
-
-        $this->assertNull($work->series_id);
-        $this->assertNull($work->series);
-    }
-}
+    $this->assertNull($work->series_id);
+    $this->assertNull($work->series);
+});

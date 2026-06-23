@@ -64,4 +64,36 @@ class ScanLibraryJobTest extends TestCase
         $this->assertNotNull($scan->finished_at);
         $this->assertSame('boom', $scan->stats['error']);
     }
+
+    public function test_job_updates_a_pre_created_scan_row_when_given_its_id(): void
+    {
+        $this->makeDoujin('Z.A.P.', '[Z.A.P. (ズッキーニ)] 四畳半物語', ['001.jpg']);
+
+        $scan = Scan::create(['status' => 'queued', 'triggered_by' => 'manual']);
+
+        (new ScanLibrary('manual', $scan->id))->handle(
+            app(\App\Scanning\LibraryScanner::class),
+            app(SeriesDetectorContract::class),
+        );
+
+        $this->assertSame(1, Scan::count()); // updated the existing row, did NOT create a second
+        $scan->refresh();
+        $this->assertSame('completed', $scan->status);
+        $this->assertNotNull($scan->started_at);
+        $this->assertSame(1, $scan->stats['added']);
+    }
+
+    public function test_job_creates_a_row_when_the_given_scan_id_is_missing(): void
+    {
+        $this->makeDoujin('Z.A.P.', '[Z.A.P. (ズッキーニ)] 四畳半物語', ['001.jpg']);
+
+        (new ScanLibrary('manual', 999))->handle(
+            app(\App\Scanning\LibraryScanner::class),
+            app(SeriesDetectorContract::class),
+        );
+
+        $scan = Scan::firstOrFail(); // fell back to creating one
+        $this->assertSame('completed', $scan->status);
+        $this->assertSame(1, $scan->stats['added']);
+    }
 }

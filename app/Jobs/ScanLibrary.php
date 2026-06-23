@@ -20,17 +20,27 @@ final class ScanLibrary implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public function __construct(public readonly string $triggeredBy = 'manual')
-    {
+    public function __construct(
+        public readonly string $triggeredBy = 'manual',
+        public readonly ?int $scanId = null,
+    ) {
     }
 
     public function handle(ScannerContract $scanner, SeriesDetectorContract $detector): void
     {
-        $scan = Scan::create([
-            'status' => 'running',
-            'triggered_by' => $this->triggeredBy,
-            'started_at' => now(),
-        ]);
+        // Update the row created at dispatch (web "Scan now"); else create one
+        // (CLI/scheduler, or if the row vanished). / 起動時に作成済みの行を更新、無ければ作成。
+        $scan = $this->scanId ? Scan::find($this->scanId) : null;
+
+        if ($scan) {
+            $scan->update(['status' => 'running', 'started_at' => now()]);
+        } else {
+            $scan = Scan::create([
+                'status' => 'running',
+                'triggered_by' => $this->triggeredBy,
+                'started_at' => now(),
+            ]);
+        }
 
         try {
             // Scan first, then group into series; merge both stat sets. / 走査→シリーズ検出→統計併合。

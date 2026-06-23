@@ -49,6 +49,7 @@ class SeriesAndWorkTest extends TestCase
             ->assertSee('DL版')             // flag badge
             ->assertSee('24 pages')         // page count
             ->assertSee('3/24')             // progress
-            ->assertSee('href="/work/'.$work->id.'/page/1"', false); // Read CTA → reader seam
+            ->assertSee('href="/work/'.$work->id.'/read"', false)   // Read CTA → reader
+            ->assertSee('Continue');                                // dynamic label (in-progress)
     }
 }

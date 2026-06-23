@@ -30,4 +30,6 @@
     --font-display: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
     --font-text: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
     --color-error: #b8453e;
+    /* Reader chrome scrim — translucent dark (the design system has no such token). */
+    --reader-scrim: rgba(0, 0, 0, 0.55);
 }

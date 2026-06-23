@@ -39,8 +39,12 @@
                     </p>
                 @endif
 
+                @php
+                    $rp = $work->readingProgress;
+                    $cta = (! $rp || $rp->current_page < 1) ? 'Read' : ($rp->is_completed ? 'Read again' : 'Continue');
+                @endphp
                 <div style="margin-top:var(--space-lg);">
-                    <x-button href="/work/{{ $work->id }}/page/1">▶ Read</x-button>
+                    <x-button href="/work/{{ $work->id }}/read">▶ {{ $cta }}</x-button>
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? 'wydoujin' }}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     {{-- Apply saved theme before first paint (no flash). / 描画前に保存テーマを適用。 --}}
     <script>
         try { if (localStorage.getItem('wyd-theme') === 'dark') document.documentElement.setAttribute('data-dark', 'true'); } catch (e) {}

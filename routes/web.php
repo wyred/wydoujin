@@ -5,6 +5,7 @@ use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\CoverController;
 use App\Http\Controllers\MangakaController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ReaderController;
 use App\Http\Controllers\ReadingProgressController;
 use App\Http\Controllers\SeriesController;
 use App\Http\Controllers\WorkController;
@@ -33,3 +34,5 @@ Route::get('/mangaka/{mangaka:slug}', [MangakaController::class, 'show'])->name(
 
 Route::get('/series/{series}', [SeriesController::class, 'show'])->name('series.show');
 Route::get('/work/{work}', [WorkController::class, 'show'])->name('work.show');
+
+Route::get('/work/{work}/read', [ReaderController::class, 'show'])->name('work.read');

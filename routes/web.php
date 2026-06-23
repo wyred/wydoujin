@@ -10,6 +10,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReaderController;
 use App\Http\Controllers\ReadingProgressController;
 use App\Http\Controllers\SeriesController;
+use App\Http\Controllers\SeriesManagementController;
 use App\Http\Controllers\WorkController;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +42,10 @@ Route::get('/maintenance/status', [MaintenanceController::class, 'status'])->nam
 Route::post('/scan', [MaintenanceController::class, 'scan'])->name('scan.store');
 
 Route::get('/series/{series}', [SeriesController::class, 'show'])->name('series.show');
+Route::post('/series/group', [SeriesManagementController::class, 'group'])->name('series.group');
+Route::post('/series/ungroup', [SeriesManagementController::class, 'ungroup'])->name('series.ungroup');
+Route::post('/series/{series}/add', [SeriesManagementController::class, 'add'])->name('series.add');
+Route::post('/series/{series}/rename', [SeriesManagementController::class, 'rename'])->name('series.rename');
 Route::get('/work/{work}', [WorkController::class, 'show'])->name('work.show');
 
 Route::get('/work/{work}/read', [ReaderController::class, 'show'])->name('work.read');

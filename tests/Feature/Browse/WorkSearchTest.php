@@ -4,6 +4,7 @@ namespace Tests\Feature\Browse;
 
 use App\Browse\WorkSearch;
 use App\Models\Mangaka;
+use App\Models\Tag;
 use App\Models\Work;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsTags;
@@ -130,5 +131,26 @@ class WorkSearchTest extends TestCase
         $this->assertSame(['A', 'B'], $page->pluck('title')->all());
         $this->assertSame(3, $page->total());
         $this->assertTrue($page->hasMorePages());
+    }
+
+    /**
+     * Locks the tombstone-exclusion guard in facets(): whereNull('tags.merged_into_id')
+     * ensures alias (tombstone) tags never surface as selectable facet values.
+     * トゥームストーン（エイリアス）タグがファセットに現れないことを保証するガードをロック。
+     */
+    public function test_facets_exclude_tombstone_tags(): void
+    {
+        $w = $this->work(['title' => 'x', 'sort_title' => '1']);
+        $real = $this->attachTag($w, 'circle', 'Real');
+
+        // Simulate the guard: attach a tombstone tag directly to the work.
+        // トゥームストーンタグを直接ピボットに紐付け、ガードが機能するか確認。
+        $tomb = Tag::create(['type' => 'circle', 'value' => 'Gone', 'merged_into_id' => $real->id]);
+        $w->tags()->attach($tomb->id);
+
+        $circles = collect((new WorkSearch())->facets()['circle'])->pluck('value')->all();
+
+        $this->assertContains('Real', $circles);
+        $this->assertNotContains('Gone', $circles);
     }
 }

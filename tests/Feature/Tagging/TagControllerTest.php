@@ -78,5 +78,10 @@ class TagControllerTest extends TestCase
 
         $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $a->id])->assertStatus(422); // into self
         $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $p->id])->assertStatus(422); // cross type
+
+        // Merging INTO an alias (tombstone) must also be rejected.
+        // エイリアス（トゥームストーン）タグへのマージも拒否されること。
+        $aliasTag = Tag::create(['type' => 'circle', 'value' => 'AliasTarget', 'merged_into_id' => $a->id]);
+        $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $aliasTag->id])->assertStatus(422); // into an alias
     }
 }

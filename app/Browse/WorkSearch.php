@@ -6,28 +6,35 @@ use App\Models\Work;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Title search + faceted filtering over works (F3a). / 作品の検索＋ファセット絞り込み。
  *
- * Facets: circle/parody/event. OR within a facet, AND across. Counts are dynamic —
- * each dimension is counted under the search + the OTHER facets (never its own),
- * so its remaining values stay selectable.
+ * Facets: 6 dimensions over the work_tag pivot. OR within a dimension, AND across.
+ * Counts are dynamic — each dimension is counted under the search + the OTHER facets
+ * (never its own), so remaining values stay selectable. / 6次元タグによるファセット。
  */
 final class WorkSearch
 {
-    public const DIMENSIONS = ['circle', 'parody', 'event'];
+    public const DIMENSIONS = ['circle', 'parody', 'event', 'author', 'flag', 'theme'];
 
     /**
      * @param string[] $circle
      * @param string[] $parody
      * @param string[] $event
+     * @param string[] $author
+     * @param string[] $flag
+     * @param string[] $theme
      */
     public function __construct(
         public readonly ?string $q = null,
         public readonly array $circle = [],
         public readonly array $parody = [],
         public readonly array $event = [],
+        public readonly array $author = [],
+        public readonly array $flag = [],
+        public readonly array $theme = [],
     ) {}
 
     public static function fromRequest(Request $request): self
@@ -43,6 +50,9 @@ final class WorkSearch
             circle: $clean($request->query('circle', [])),
             parody: $clean($request->query('parody', [])),
             event: $clean($request->query('event', [])),
+            author: $clean($request->query('author', [])),
+            flag: $clean($request->query('flag', [])),
+            theme: $clean($request->query('theme', [])),
         );
     }
 
@@ -58,9 +68,7 @@ final class WorkSearch
         return Work::query()
             ->where('is_missing', false)
             ->when($this->q !== null, function (Builder $w): void {
-                // Escape LIKE wildcards (and the escape char) so a literal % / _ in the query
-                // matches literally. ESCAPE '!' is portable — it avoids the backslash string-literal
-                // divergence between SQLite and MySQL. / ワイルドカードをリテラル一致（移植性: '!' をエスケープ文字に）。
+                // ESCAPE '!' keeps literal % / _ literal and is portable (SQLite+MySQL). / 移植性のためのエスケープ。
                 $term = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $this->q).'%';
                 $w->where(function (Builder $x) use ($term): void {
                     $x->whereRaw("title LIKE ? ESCAPE '!'", [$term])
@@ -69,13 +77,13 @@ final class WorkSearch
             });
     }
 
-    /** Apply facet whereIns, optionally skipping one dimension. / ファセット適用（1次元除外可）。 */
+    /** Apply facet filters via the pivot, optionally skipping one dimension. / ファセット適用。 */
     private function applyFacets(Builder $query, ?string $except = null): Builder
     {
         foreach (self::DIMENSIONS as $dim) {
             $values = $this->selected($dim);
             if ($dim !== $except && $values !== []) {
-                $query->whereIn($dim, $values);
+                $query->whereHas('tags', fn (Builder $t) => $t->where('type', $dim)->whereIn('value', $values));
             }
         }
 
@@ -85,13 +93,19 @@ final class WorkSearch
     public function results(int $page = 1, int $perPage = 60): LengthAwarePaginator
     {
         return $this->applyFacets($this->base())
-            ->with('readingProgress')
+            ->with(['readingProgress', 'tags'])
             ->orderBy('sort_title')
             ->paginate($perPage, ['*'], 'page', max(1, $page));
     }
 
+    /** Work ids under base + the OTHER facets (excluding $except's own selection). / 基底＋他次元の作品ID。 */
+    private function matchingWorkIds(?string $except): array
+    {
+        return $this->applyFacets($this->base(), except: $except)->pluck('id')->all();
+    }
+
     /**
-     * Dynamic facet counts. / 動的ファセット件数。
+     * Dynamic facet counts from the pivot. / 動的ファセット件数。
      *
      * @return array<string, list<array{value:string,count:int}>>
      */
@@ -99,25 +113,24 @@ final class WorkSearch
     {
         $out = [];
         foreach (self::DIMENSIONS as $dim) {
-            // Count under base + the OTHER facets (exclude this dim's own selection).
-            $counts = $this->applyFacets($this->base(), except: $dim)
-                ->whereNotNull($dim)
-                ->pluck($dim)
-                ->countBy()
-                ->all(); // value => count
+            $counts = DB::table('work_tag')
+                ->join('tags', 'tags.id', '=', 'work_tag.tag_id')
+                ->whereIn('work_tag.work_id', $this->matchingWorkIds($dim))
+                ->where('tags.type', $dim)
+                ->whereNull('tags.merged_into_id')
+                ->groupBy('tags.value')
+                ->selectRaw('tags.value as value, COUNT(DISTINCT work_tag.work_id) as count')
+                ->pluck('count', 'value')
+                ->all();
 
-            // Keep selected-but-now-absent values visible so they can be unchecked.
             foreach ($this->selected($dim) as $sel) {
                 $counts[$sel] ??= 0;
             }
-
             $rows = [];
             foreach ($counts as $value => $count) {
                 $rows[] = ['value' => (string) $value, 'count' => (int) $count];
             }
-            // count desc, then value asc.
             usort($rows, static fn (array $a, array $b): int => [$b['count'], $a['value']] <=> [$a['count'], $b['value']]);
-
             $out[$dim] = $rows;
         }
 

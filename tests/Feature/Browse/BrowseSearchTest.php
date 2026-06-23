@@ -5,11 +5,13 @@ namespace Tests\Feature\Browse;
 use App\Models\Mangaka;
 use App\Models\Work;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsTags;
 use Tests\TestCase;
 
 class BrowseSearchTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsTags;
 
     protected function setUp(): void
     {
@@ -49,8 +51,8 @@ class BrowseSearchTest extends TestCase
 
     public function test_facet_filters_results(): void
     {
-        $this->work(['title' => 'ZapWork', 'sort_title' => 'a', 'circle' => 'Z.A.P.']);
-        $this->work(['title' => 'FooWork', 'sort_title' => 'b', 'circle' => 'Foo']);
+        $zap = $this->work(['title' => 'ZapWork', 'sort_title' => 'a']); $this->attachTag($zap, 'circle', 'Z.A.P.');
+        $foo = $this->work(['title' => 'FooWork', 'sort_title' => 'b']); $this->attachTag($foo, 'circle', 'Foo');
 
         $url = '/browse?'.http_build_query(['circle' => ['Z.A.P.']]);
         $this->get($url)->assertOk()
@@ -67,7 +69,7 @@ class BrowseSearchTest extends TestCase
 
     public function test_embeds_facet_data_for_alpine(): void
     {
-        $this->work(['title' => 'X', 'sort_title' => 'a', 'circle' => 'Z.A.P.']);
+        $w = $this->work(['title' => 'X', 'sort_title' => 'a']); $this->attachTag($w, 'circle', 'Z.A.P.');
 
         // The facet value ships in the embedded initial-state JSON.
         $this->get('/browse')->assertOk()->assertSee('Z.A.P.');
@@ -75,12 +77,12 @@ class BrowseSearchTest extends TestCase
 
     public function test_json_endpoint_shape(): void
     {
-        $this->work(['title' => 'JsonWork', 'sort_title' => 'a', 'circle' => 'C1']);
+        $w = $this->work(['title' => 'JsonWork', 'sort_title' => 'a']); $this->attachTag($w, 'circle', 'C1');
 
         $res = $this->getJson('/browse')->assertOk()
             ->assertJsonStructure([
                 'total', 'page', 'hasMore',
-                'facets' => ['circle', 'parody', 'event'],
+                'facets' => ['circle', 'parody', 'event', 'author', 'flag', 'theme'],
                 'html',
             ]);
         $this->assertStringContainsString('JsonWork', $res->json('html'));

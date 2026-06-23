@@ -6,11 +6,13 @@ use App\Browse\WorkSearch;
 use App\Models\Mangaka;
 use App\Models\Work;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsTags;
 use Tests\TestCase;
 
 class WorkSearchTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsTags;
 
     private ?Mangaka $m = null;
 
@@ -53,47 +55,55 @@ class WorkSearchTest extends TestCase
 
     public function test_facets_or_within_and_and_across(): void
     {
-        $this->work(['title' => 'A-P', 'sort_title' => '1', 'circle' => 'A', 'parody' => 'P']);
-        $this->work(['title' => 'B-P', 'sort_title' => '2', 'circle' => 'B', 'parody' => 'P']);
-        $this->work(['title' => 'C-Q', 'sort_title' => '3', 'circle' => 'C', 'parody' => 'Q']);
+        $a = $this->work(['title' => 'A-P', 'sort_title' => '1']); $this->attachTag($a, 'circle', 'A'); $this->attachTag($a, 'parody', 'P');
+        $b = $this->work(['title' => 'B-P', 'sort_title' => '2']); $this->attachTag($b, 'circle', 'B'); $this->attachTag($b, 'parody', 'P');
+        $c = $this->work(['title' => 'C-Q', 'sort_title' => '3']); $this->attachTag($c, 'circle', 'C'); $this->attachTag($c, 'parody', 'Q');
 
-        // OR within circle:
         $or = (new WorkSearch(circle: ['A', 'B']))->results()->pluck('title')->all();
         sort($or);
         $this->assertSame(['A-P', 'B-P'], $or);
 
-        // AND across circle + parody:
         $and = (new WorkSearch(circle: ['A', 'B'], parody: ['Q']))->results()->pluck('title')->all();
-        $this->assertSame([], $and); // A,B are parody P, not Q
+        $this->assertSame([], $and);
     }
 
     public function test_counts_are_dynamic_and_exclude_own_dimension(): void
     {
-        $this->work(['title' => 'w1', 'sort_title' => '1', 'circle' => 'A', 'parody' => 'P']);
-        $this->work(['title' => 'w2', 'sort_title' => '2', 'circle' => 'A', 'parody' => 'Q']);
-        $this->work(['title' => 'w3', 'sort_title' => '3', 'circle' => 'B', 'parody' => 'P']);
+        $w1 = $this->work(['title' => 'w1', 'sort_title' => '1']); $this->attachTag($w1, 'circle', 'A'); $this->attachTag($w1, 'parody', 'P');
+        $w2 = $this->work(['title' => 'w2', 'sort_title' => '2']); $this->attachTag($w2, 'circle', 'A'); $this->attachTag($w2, 'parody', 'Q');
+        $w3 = $this->work(['title' => 'w3', 'sort_title' => '3']); $this->attachTag($w3, 'circle', 'B'); $this->attachTag($w3, 'parody', 'P');
 
         $facets = (new WorkSearch(parody: ['P']))->facets();
 
-        // circle counted under parody=P → {A:1 (w1), B:1 (w3)}
         $circle = collect($facets['circle'])->pluck('count', 'value')->all();
         $this->assertSame(['A' => 1, 'B' => 1], $circle);
 
-        // parody EXCLUDES its own selection → counted over all → {P:2, Q:1}
         $parody = collect($facets['parody'])->pluck('count', 'value')->all();
         $this->assertSame(['P' => 2, 'Q' => 1], $parody);
     }
 
     public function test_selected_value_kept_visible_when_zero(): void
     {
-        $this->work(['title' => 'only', 'sort_title' => '1', 'circle' => 'A']);
+        $w = $this->work(['title' => 'only', 'sort_title' => '1']); $this->attachTag($w, 'circle', 'A');
 
-        $facets = (new WorkSearch(circle: ['B']))->facets(); // B has no works
+        $facets = (new WorkSearch(circle: ['B']))->facets();
 
         $circle = collect($facets['circle'])->pluck('count', 'value')->all();
         $this->assertSame(1, $circle['A']);
         $this->assertArrayHasKey('B', $circle);
-        $this->assertSame(0, $circle['B']); // selected → retained at 0
+        $this->assertSame(0, $circle['B']);
+    }
+
+    public function test_facets_cover_author_and_flag_dimensions(): void
+    {
+        $w = $this->work(['title' => 'x', 'sort_title' => '1']);
+        $this->attachTag($w, 'author', 'Z'); $this->attachTag($w, 'flag', 'DL版');
+
+        $facets = (new WorkSearch())->facets();
+
+        $this->assertSame(['circle', 'parody', 'event', 'author', 'flag', 'theme'], array_keys($facets));
+        $this->assertSame(['Z' => 1], collect($facets['author'])->pluck('count', 'value')->all());
+        $this->assertSame(['DL版' => 1], collect($facets['flag'])->pluck('count', 'value')->all());
     }
 
     public function test_q_treats_percent_and_underscore_literally(): void

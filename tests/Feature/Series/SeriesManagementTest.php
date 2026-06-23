@@ -4,6 +4,7 @@ namespace Tests\Feature\Series;
 
 use App\Models\Series;
 use App\Models\Work;
+use App\Parsing\ParsedName;
 use App\Series\SeriesDetectorContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -51,6 +52,12 @@ class SeriesManagementTest extends TestCase
         $this->assertFalse($series->refresh()->is_auto);
         $this->assertSame($series->id, $w->refresh()->series_id);
         $this->assertTrue($w->refresh()->series_locked);
+
+        // Lock contract: a re-detect leaves the manual add intact.
+        $this->detect();
+        $this->assertFalse($series->refresh()->is_auto);
+        $this->assertSame($series->id, $w->refresh()->series_id);
+        $this->assertTrue($w->refresh()->series_locked);
     }
 
     public function test_ungroup_clears_series_and_locks(): void
@@ -61,6 +68,11 @@ class SeriesManagementTest extends TestCase
 
         $this->postJson('/series/ungroup', ['work_ids' => [$w->id]])->assertOk();
 
+        $this->assertNull($w->refresh()->series_id);
+        $this->assertTrue($w->refresh()->series_locked);
+
+        $this->assertNotNull(\App\Models\Series::find($series->id)); // is_auto=false series survives cleanup
+        $this->detect();
         $this->assertNull($w->refresh()->series_id);
         $this->assertTrue($w->refresh()->series_locked);
     }
@@ -88,6 +100,25 @@ class SeriesManagementTest extends TestCase
         $this->assertSame('New Name', $series->refresh()->name);
         $this->assertFalse($series->refresh()->is_auto);
         $this->assertTrue($w->refresh()->series_locked);
+
+        $this->assertSame(ParsedName::deriveSortTitle('New Name'), $series->refresh()->sort_name);
+        $this->detect();
+        $this->assertSame('New Name', $series->refresh()->name);
+        $this->assertFalse($series->refresh()->is_auto);
+        $this->assertTrue($w->refresh()->series_locked);
+    }
+
+    public function test_add_deletes_an_emptied_source_auto_series(): void
+    {
+        $m = $this->mangaka('Z.A.P.');
+        $target = \App\Models\Series::create(['mangaka_id' => $m->id, 'name' => 'Target', 'is_auto' => false]);
+        $auto = \App\Models\Series::create(['mangaka_id' => $m->id, 'name' => 'Auto', 'is_auto' => true]);
+        $w = $this->seedWork('Z.A.P.', 'x', ['series_id' => $auto->id]);
+
+        $this->postJson('/series/'.$target->id.'/add', ['work_ids' => [$w->id]])->assertOk();
+
+        $this->assertNull(\App\Models\Series::find($auto->id)); // emptied source auto series cleaned
+        $this->assertSame($target->id, $w->refresh()->series_id);
     }
 
     public function test_rejects_cross_mangaka_work_ids(): void

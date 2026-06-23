@@ -17,6 +17,7 @@
                 <x-button type="button" x-on:click="scan()" x-bind:disabled="scanning || busy"
                           x-bind:style="(scanning || busy) ? 'opacity:0.5; pointer-events:none;' : ''">▶ Scan now</x-button>
                 <span style="font:var(--type-caption); color:var(--text-muted);" x-text="panelText()"></span>
+                <span x-show="error" x-text="error" style="color:var(--color-error); font:var(--type-caption);"></span>
             </div>
 
             <x-section-heading>Recent scans</x-section-heading>
@@ -74,6 +75,7 @@
             latest: initial.latest ?? null,
             history: initial.history ?? [],
             busy: false,
+            error: '',
             _poll: null,
 
             init() {
@@ -85,6 +87,7 @@
             async scan() {
                 if (this.scanning || this.busy) return;
                 this.busy = true;
+                this.error = '';
                 try {
                     const res = await fetch('/scan', {
                         method: 'POST',
@@ -93,11 +96,15 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
                         },
                     });
+                    if (!res.ok) throw new Error('http ' + res.status);
                     const data = await res.json();
                     this.latest = data.scan;
                     this.startPolling();
-                } catch (e) { /* best-effort */ }
-                finally { this.busy = false; }
+                } catch (e) {
+                    this.error = 'Could not start scan — try again.';
+                } finally {
+                    this.busy = false;
+                }
             },
             startPolling() {
                 clearInterval(this._poll);

@@ -31,7 +31,9 @@ final class MaintenanceController extends Controller
 
     public function scan()
     {
-        // No second scan while one is queued/running. / 二重起動防止。
+        // No second scan while one is queued/running. The check-then-create race is
+        // tolerated: single-user + the client disables the button, so the worst case is
+        // one redundant scan the next poll reconciles. / 二重起動防止（単一ユーザのため競合は許容）。
         $active = Scan::whereIn('status', ['queued', 'running'])->latest()->first();
         if ($active) {
             return response()->json(['scan' => $this->serialize($active)], 202);

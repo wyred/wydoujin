@@ -97,13 +97,14 @@ class WorkSearchTest extends TestCase
 {
     use RefreshDatabase;
 
+    private ?Mangaka $m = null;
+
     /** @param array<string,mixed> $a */
     private function work(array $a): Work
     {
-        static $m = null;
-        $m ??= Mangaka::factory()->create();
+        $this->m ??= Mangaka::factory()->create();
 
-        return Work::factory()->for($m)->create($a);
+        return Work::factory()->for($this->m)->create($a);
     }
 
     public function test_excludes_missing_works(): void
@@ -374,13 +375,14 @@ class BrowseSearchTest extends TestCase
         $this->withoutVite();
     }
 
+    private ?Mangaka $m = null;
+
     /** @param array<string,mixed> $a */
     private function work(array $a): Work
     {
-        static $m = null;
-        $m ??= Mangaka::factory()->create();
+        $this->m ??= Mangaka::factory()->create();
 
-        return Work::factory()->for($m)->create($a);
+        return Work::factory()->for($this->m)->create($a);
     }
 
     public function test_browse_renders_grid_and_nav_link(): void

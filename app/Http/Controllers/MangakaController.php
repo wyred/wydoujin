@@ -30,6 +30,7 @@ final class MangakaController extends Controller
     public function show(Mangaka $mangaka)
     {
         $series = $mangaka->series()
+            ->whereHas('works', fn ($q) => $q->where('is_missing', false))
             ->with(['works' => fn ($q) => $q->where('is_missing', false)->orderBy('sort_title')])
             ->orderBy('name')
             ->get();

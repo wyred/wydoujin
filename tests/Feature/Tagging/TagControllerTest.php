@@ -1,96 +1,82 @@
 <?php
 
-namespace Tests\Feature\Tagging;
-
 use App\Models\Tag;
 use App\Models\Work;
 use App\Parsing\ParsedName;
 use App\Tagging\WorkTagSync;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsTags;
-use Tests\TestCase;
 
-class TagControllerTest extends TestCase
-{
-    use RefreshDatabase;
-    use SeedsTags;
+uses(SeedsTags::class);
 
-    public function test_index_lists_canonical_tags_with_counts(): void
-    {
-        $w = Work::factory()->create();
-        $this->attachTag($w, 'circle', 'Z.A.P.');
+test('index lists canonical tags with counts', function (): void {
+    $w = Work::factory()->create();
+    $this->attachTag($w, 'circle', 'Z.A.P.');
 
-        $this->get('/tags')->assertOk()->assertSee('Z.A.P.');
-    }
+    $this->get('/tags')->assertOk()->assertSee('Z.A.P.');
+});
 
-    public function test_index_hides_orphan_tags_with_no_works(): void
-    {
-        $w = Work::factory()->create();
-        $this->attachTag($w, 'circle', 'Used');
-        Tag::create(['type' => 'circle', 'value' => 'Orphan']); // canonical but linked to no works
+test('index hides orphan tags with no works', function (): void {
+    $w = Work::factory()->create();
+    $this->attachTag($w, 'circle', 'Used');
+    Tag::create(['type' => 'circle', 'value' => 'Orphan']); // canonical but linked to no works
 
-        $this->get('/tags')->assertOk()->assertSee('Used')->assertDontSee('Orphan');
-    }
+    $this->get('/tags')->assertOk()->assertSee('Used')->assertDontSee('Orphan');
+});
 
-    public function test_rename_in_place_creates_tombstone_that_scanner_resolves(): void
-    {
-        $w = Work::factory()->create();
-        $tag = $this->attachTag($w, 'parody', 'FGO');
+test('rename in place creates tombstone that scanner resolves', function (): void {
+    $w = Work::factory()->create();
+    $tag = $this->attachTag($w, 'parody', 'FGO');
 
-        $this->postJson('/tags/'.$tag->id.'/rename', ['value' => 'Fate/Grand Order'])->assertOk();
+    $this->postJson('/tags/'.$tag->id.'/rename', ['value' => 'Fate/Grand Order'])->assertOk();
 
-        $tag->refresh();
-        $this->assertSame('Fate/Grand Order', $tag->value);
-        // A tombstone for the old value now points at the renamed tag.
-        $tombstone = Tag::where('type', 'parody')->where('value', 'FGO')->firstOrFail();
-        $this->assertSame($tag->id, $tombstone->merged_into_id);
+    $tag->refresh();
+    $this->assertSame('Fate/Grand Order', $tag->value);
+    // A tombstone for the old value now points at the renamed tag.
+    $tombstone = Tag::where('type', 'parody')->where('value', 'FGO')->firstOrFail();
+    $this->assertSame($tag->id, $tombstone->merged_into_id);
 
-        // The scanner re-deriving the raw "FGO" resolves to the canonical tag.
-        $other = Work::factory()->create();
-        app(WorkTagSync::class)->sync($other, ParsedName::make('t', 'raw', parody: 'FGO'));
-        $this->assertSame([$tag->id], $other->tags()->pluck('tags.id')->all());
-    }
+    // The scanner re-deriving the raw "FGO" resolves to the canonical tag.
+    $other = Work::factory()->create();
+    app(WorkTagSync::class)->sync($other, ParsedName::make('t', 'raw', parody: 'FGO'));
+    $this->assertSame([$tag->id], $other->tags()->pluck('tags.id')->all());
+});
 
-    public function test_rename_onto_existing_value_merges(): void
-    {
-        $w1 = Work::factory()->create(); $a = $this->attachTag($w1, 'circle', 'A');
-        $w2 = Work::factory()->create(); $b = $this->attachTag($w2, 'circle', 'B');
+test('rename onto existing value merges', function (): void {
+    $w1 = Work::factory()->create(); $a = $this->attachTag($w1, 'circle', 'A');
+    $w2 = Work::factory()->create(); $b = $this->attachTag($w2, 'circle', 'B');
 
-        $this->postJson('/tags/'.$a->id.'/rename', ['value' => 'B'])->assertOk();
+    $this->postJson('/tags/'.$a->id.'/rename', ['value' => 'B'])->assertOk();
 
-        $this->assertSame($b->id, $a->fresh()->merged_into_id); // A becomes an alias of B
-        $this->assertTrue($w1->fresh()->tags->contains($b));
-    }
+    $this->assertSame($b->id, $a->fresh()->merged_into_id); // A becomes an alias of B
+    $this->assertTrue($w1->fresh()->tags->contains($b));
+});
 
-    public function test_merge_repoints_dedupes_and_flattens(): void
-    {
-        $shared = Work::factory()->create();
-        $onlyA = Work::factory()->create();
-        $a = $this->attachTag($shared, 'circle', 'A'); $this->attachTag($onlyA, 'circle', 'A');
-        $b = $this->attachTag($shared, 'circle', 'B'); // shared already has B → dedupe
-        $c = Tag::create(['type' => 'circle', 'value' => 'C', 'merged_into_id' => $a->id]); // chain into A
+test('merge repoints dedupes and flattens', function (): void {
+    $shared = Work::factory()->create();
+    $onlyA = Work::factory()->create();
+    $a = $this->attachTag($shared, 'circle', 'A'); $this->attachTag($onlyA, 'circle', 'A');
+    $b = $this->attachTag($shared, 'circle', 'B'); // shared already has B → dedupe
+    $c = Tag::create(['type' => 'circle', 'value' => 'C', 'merged_into_id' => $a->id]); // chain into A
 
-        $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $b->id])->assertOk();
+    $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $b->id])->assertOk();
 
-        $this->assertSame($b->id, $a->fresh()->merged_into_id);
-        $this->assertSame($b->id, $c->fresh()->merged_into_id);        // chain flattened A→B
-        $this->assertSame(0, $a->fresh()->works()->count());           // pivots moved off A
-        $this->assertTrue($onlyA->fresh()->tags->contains($b));        // repointed
-        $this->assertSame(1, $shared->fresh()->tags()->where('tags.id', $b->id)->count()); // deduped
-    }
+    $this->assertSame($b->id, $a->fresh()->merged_into_id);
+    $this->assertSame($b->id, $c->fresh()->merged_into_id);        // chain flattened A→B
+    $this->assertSame(0, $a->fresh()->works()->count());           // pivots moved off A
+    $this->assertTrue($onlyA->fresh()->tags->contains($b));        // repointed
+    $this->assertSame(1, $shared->fresh()->tags()->where('tags.id', $b->id)->count()); // deduped
+});
 
-    public function test_merge_validates(): void
-    {
-        $w = Work::factory()->create();
-        $a = $this->attachTag($w, 'circle', 'A');
-        $p = $this->attachTag($w, 'parody', 'A');
+test('merge validates', function (): void {
+    $w = Work::factory()->create();
+    $a = $this->attachTag($w, 'circle', 'A');
+    $p = $this->attachTag($w, 'parody', 'A');
 
-        $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $a->id])->assertStatus(422); // into self
-        $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $p->id])->assertStatus(422); // cross type
+    $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $a->id])->assertStatus(422); // into self
+    $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $p->id])->assertStatus(422); // cross type
 
-        // Merging INTO an alias (tombstone) must also be rejected.
-        // エイリアス（トゥームストーン）タグへのマージも拒否されること。
-        $aliasTag = Tag::create(['type' => 'circle', 'value' => 'AliasTarget', 'merged_into_id' => $a->id]);
-        $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $aliasTag->id])->assertStatus(422); // into an alias
-    }
-}
+    // Merging INTO an alias (tombstone) must also be rejected.
+    // エイリアス（トゥームストーン）タグへのマージも拒否されること。
+    $aliasTag = Tag::create(['type' => 'circle', 'value' => 'AliasTarget', 'merged_into_id' => $a->id]);
+    $this->postJson('/tags/'.$a->id.'/merge', ['into_id' => $aliasTag->id])->assertStatus(422); // into an alias
+});

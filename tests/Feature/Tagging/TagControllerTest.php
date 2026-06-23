@@ -23,6 +23,15 @@ class TagControllerTest extends TestCase
         $this->get('/tags')->assertOk()->assertSee('Z.A.P.');
     }
 
+    public function test_index_hides_orphan_tags_with_no_works(): void
+    {
+        $w = Work::factory()->create();
+        $this->attachTag($w, 'circle', 'Used');
+        Tag::create(['type' => 'circle', 'value' => 'Orphan']); // canonical but linked to no works
+
+        $this->get('/tags')->assertOk()->assertSee('Used')->assertDontSee('Orphan');
+    }
+
     public function test_rename_in_place_creates_tombstone_that_scanner_resolves(): void
     {
         $w = Work::factory()->create();

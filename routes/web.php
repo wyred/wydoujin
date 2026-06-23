@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\PasswordLoginController;
 use App\Http\Controllers\BrowseController;
 use App\Http\Controllers\BrowseSearchController;
 use App\Http\Controllers\CoverController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\MangakaController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReaderController;
@@ -34,6 +35,10 @@ Route::get('/mangaka', [MangakaController::class, 'index'])->name('mangaka.index
 Route::get('/mangaka/{mangaka:slug}', [MangakaController::class, 'show'])->name('mangaka.show');
 
 Route::get('/browse', [BrowseSearchController::class, 'index'])->name('browse.index');
+
+Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
+Route::get('/maintenance/status', [MaintenanceController::class, 'status'])->name('maintenance.status');
+Route::post('/scan', [MaintenanceController::class, 'scan'])->name('scan.store');
 
 Route::get('/series/{series}', [SeriesController::class, 'show'])->name('series.show');
 Route::get('/work/{work}', [WorkController::class, 'show'])->name('work.show');

@@ -5,7 +5,6 @@ use App\Models\Work;
 use App\Scanning\LibraryScanner;
 use Illuminate\Support\Str;
 use Tests\Feature\Scanning\BuildsLibraryFixtures;
-use ZipArchive;
 
 uses(BuildsLibraryFixtures::class);
 

@@ -58,6 +58,10 @@
 
         {{-- Results --}}
         <main class="min-w-0" style="flex:1;">
+            <div x-show="error" style="margin-bottom:var(--space-md); padding:var(--space-sm) var(--space-md); border-radius:var(--radius-sm); background:color-mix(in srgb, var(--color-error) 12%, transparent); color:var(--color-error); font:var(--type-caption);">
+                Couldn't load results.
+                <button type="button" @click="refresh()" style="background:none; border:none; padding:0; cursor:pointer; color:var(--color-error); text-decoration:underline; font:inherit;">Retry</button>
+            </div>
             <div class="flex items-center" style="gap:var(--space-md); margin-bottom:var(--space-md);">
                 <span style="font:var(--type-caption); color:var(--text-muted);" x-text="total + ' ' + (total === 1 ? 'work' : 'works')"></span>
                 <button type="button" x-show="activeCount() > 0" @click="clear()"
@@ -93,6 +97,7 @@
             page: initial.page ?? 1,
             hasMore: initial.hasMore ?? false,
             loading: false,
+            error: false,
             railOpen: false,
             cap: 15,
             groups: [
@@ -158,6 +163,7 @@
                 return res.json();
             },
             async refresh() {
+                this.error = false;
                 this.page = 1;
                 this.syncUrl();
                 const id = ++this._reqId;
@@ -169,10 +175,11 @@
                     this.total = data.total;
                     this.hasMore = data.hasMore;
                     this.$refs.grid.innerHTML = data.html;
-                } catch (e) { /* best-effort */ }
+                } catch (e) { this.error = true; }
                 finally { if (id === this._reqId) this.loading = false; }
             },
             async loadMore() {
+                this.error = false;
                 const next = this.page + 1;
                 const id = ++this._reqId;
                 this.loading = true;
@@ -182,7 +189,7 @@
                     this.page = next;
                     this.hasMore = data.hasMore;
                     this.$refs.grid.insertAdjacentHTML('beforeend', data.html);
-                } catch (e) { /* best-effort */ }
+                } catch (e) { this.error = true; }
                 finally { if (id === this._reqId) this.loading = false; }
             },
         }));

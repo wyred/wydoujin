@@ -35,8 +35,11 @@ straight from the zip; only resized covers are cached.
 > Node/npm are on the normal PATH. (Inside Docker, php is fine — this is local-dev only.)
 
 ```bash
-php artisan test                       # full suite (in-memory SQLite)
-php artisan test --filter=HealthTest   # a single test class
+php artisan test                       # full suite via Pest (in-memory SQLite); or: vendor/bin/pest
+vendor/bin/pest --filter=health        # a single test / group
+php -d pcov.enabled=1 vendor/bin/pest --coverage   # coverage (PCOV is loaded but OFF by default)
+vendor/bin/pest tests/Browser          # Pest 4 browser suite (Playwright; explicit run, not in CI)
+npm install && npx playwright install chromium     # one-time prereq for the browser suite
 php artisan migrate                    # apply migrations (add --force in containers)
 npm run build                          # compile Vite assets → public/build
 npm run dev                            # Vite dev server with HMR
@@ -72,19 +75,23 @@ the image to GHCR on push to `main` and on `v*` tags.
 
 ## Testing & verification
 
-- `php artisan test` runs the full suite on in-memory SQLite (matches CI).
-- **Interactive Alpine behavior** (reader navigation, live search/facets, scan-status polling,
-  series manage mode, the tag editor + `/tags` rename/merge) is verified with a **browser
-  render-verify gate** (the `agent-browser`
-  skill), **not PHPUnit** — PHPUnit covers routes, queries, and server-rendered wiring. Verify in
-  both light and dark themes. Local-gate notes (serve + seed the dev SQLite; `LIBRARY_PATH`
-  defaults to the non-writable `/library`; a scan needs a running `php artisan queue:work`) are in
-  the project memories.
+- Tests run on **Pest 4** (built on PHPUnit; `php artisan test` or `vendor/bin/pest`) on in-memory
+  SQLite (matches CI). **100% line coverage** of `app/` via PCOV — the ext is loaded but OFF by
+  default, so enable it: `php -d pcov.enabled=1 vendor/bin/pest --coverage`.
+- **Interactive Alpine behavior** (reader nav, live search/facets, scan-status polling, series
+  manage mode, the tag editor, `/tags` rename/merge) has a committed **Pest browser suite** (Pest 4
+  + Playwright / real Chromium) under `tests/Browser/`. Run it explicitly: `vendor/bin/pest tests/Browser`
+  — it's kept out of the default suite and CI for now (one-time prereq: `npx playwright install chromium`).
+  It checks light **and** dark and asserts no console/JS errors. The ad-hoc `agent-browser` gate
+  stays available for one-off manual checks; local-gate notes (serve + seed the dev SQLite;
+  `LIBRARY_PATH` defaults to the non-writable `/library`; a scan needs a running
+  `php artisan queue:work`) are in the project memories.
 
 ## Target architecture
 
 - **Stack:** Laravel 13 (PHP 8.3+) · Blade + Tailwind CSS · **Alpine.js as the only JS library**
-  (no SPA framework, no jQuery) · Vite · FrankenPHP · Docker · GitHub Actions.
+  (no SPA framework, no jQuery) · Vite · FrankenPHP · Docker · GitHub Actions · **Pest 4** for tests
+  (unit/feature + a Playwright browser suite).
 - **Single-image monolith:** one Docker image runs three processes under **s6-overlay** — `web`
   (FrankenPHP, no separate nginx), one `queue worker` (scan + cover-gen jobs), and the
   `scheduler` (periodic scan). Volumes: `/library` (read-only), `/data` (writable: cached

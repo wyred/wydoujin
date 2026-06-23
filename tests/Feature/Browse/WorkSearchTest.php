@@ -96,6 +96,19 @@ class WorkSearchTest extends TestCase
         $this->assertSame(0, $circle['B']); // selected → retained at 0
     }
 
+    public function test_q_treats_percent_and_underscore_literally(): void
+    {
+        $this->work(['title' => '100% Pure', 'sort_title' => '1']);
+        $this->work(['title' => '100 Things', 'sort_title' => '2']);
+        $this->work(['title' => 'a_b match', 'sort_title' => '3']);
+        $this->work(['title' => 'axb other', 'sort_title' => '4']);
+
+        // '%' is escaped → only the literal "100%" title matches (NOT "100 Things").
+        $this->assertSame(['100% Pure'], (new WorkSearch(q: '100%'))->results()->pluck('title')->all());
+        // '_' is escaped → only the literal "a_b" matches (NOT "axb", where _ would be any-char).
+        $this->assertSame(['a_b match'], (new WorkSearch(q: 'a_b'))->results()->pluck('title')->all());
+    }
+
     public function test_results_ordered_by_sort_title_and_paginated(): void
     {
         $this->work(['title' => 'C', 'sort_title' => 'C']);

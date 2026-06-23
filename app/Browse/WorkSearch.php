@@ -58,9 +58,13 @@ final class WorkSearch
         return Work::query()
             ->where('is_missing', false)
             ->when($this->q !== null, function (Builder $w): void {
-                $term = '%'.$this->q.'%';
+                // Escape LIKE wildcards (and the escape char) so a literal % / _ in the query
+                // matches literally. ESCAPE '!' is portable — it avoids the backslash string-literal
+                // divergence between SQLite and MySQL. / ワイルドカードをリテラル一致（移植性: '!' をエスケープ文字に）。
+                $term = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $this->q).'%';
                 $w->where(function (Builder $x) use ($term): void {
-                    $x->where('title', 'like', $term)->orWhere('title_raw', 'like', $term);
+                    $x->whereRaw("title LIKE ? ESCAPE '!'", [$term])
+                        ->orWhereRaw("title_raw LIKE ? ESCAPE '!'", [$term]);
                 });
             });
     }

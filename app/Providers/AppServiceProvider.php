@@ -10,6 +10,7 @@ use App\Scanning\LibraryScanner;
 use App\Scanning\ScannerContract;
 use App\Series\SeriesDetector;
 use App\Series\SeriesDetectorContract;
+use App\Tagging\WorkTagSync;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -42,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
             $app->make(ArchiveInspector::class),
             $app->make(CoverGenerator::class),
             $app->make(FilenameParser::class),
+            $app->make(WorkTagSync::class),
             config('scan.library_path'),
         ));
 

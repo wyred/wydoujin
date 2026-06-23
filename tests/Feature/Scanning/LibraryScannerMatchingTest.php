@@ -39,11 +39,11 @@ class LibraryScannerMatchingTest extends TestCase
         $this->assertSame(1, $stats['added']);
         $work = Work::firstOrFail();
         $this->assertSame('四畳半物語', $work->title);
-        $this->assertSame('C89', $work->event);
-        $this->assertSame('Z.A.P.', $work->circle);
-        $this->assertSame('ズッキーニ', $work->author);
-        $this->assertSame('オリジナル', $work->parody);
-        $this->assertSame(['DL版'], $work->flags);
+        // Metadata now lives in tags. / メタデータはタグに。
+        $this->assertEqualsCanonicalizing([
+            ['event', 'C89'], ['circle', 'Z.A.P.'], ['author', 'ズッキーニ'],
+            ['parody', 'オリジナル'], ['flag', 'DL版'],
+        ], $work->tags()->get()->map(fn ($t) => [$t->type, $t->value])->all());
         $this->assertSame(2, $work->page_count);
         $this->assertSame(['001.jpg', '002.jpg'], $work->entries);
         $this->assertSame('Z.A.P.', $work->mangaka->name);

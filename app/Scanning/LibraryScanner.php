@@ -8,6 +8,7 @@ use App\Archive\CoverGenerator;
 use App\Models\Mangaka;
 use App\Models\Work;
 use App\Parsing\FilenameParser;
+use App\Tagging\WorkTagSync;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -20,6 +21,7 @@ final class LibraryScanner implements ScannerContract
         private readonly ArchiveInspector $inspector,
         private readonly CoverGenerator $covers,
         private readonly FilenameParser $parser,
+        private readonly WorkTagSync $tags,
         private readonly string $libraryPath,
     ) {
     }
@@ -46,6 +48,8 @@ final class LibraryScanner implements ScannerContract
         $stats['missing'] = Work::where('last_seen_at', '<', $scanStart)
             ->where('is_missing', false)
             ->update(['is_missing' => true]);
+
+        $this->tags->pruneOrphans(); // drop tags no work references / 参照されないタグを削除
 
         return $stats;
     }
@@ -106,12 +110,6 @@ final class LibraryScanner implements ScannerContract
             'title' => $parsed->title,
             'title_raw' => $parsed->titleRaw,
             'sort_title' => $parsed->sortTitle,
-            'event' => $parsed->event,
-            'circle' => $parsed->circle,
-            'author' => $parsed->author,
-            'parody' => $parsed->parody,
-            'language' => $parsed->language,
-            'flags' => $parsed->flags,
             'page_count' => $inspection->pageCount,
             'entries' => $inspection->imageEntries,
             'file_size' => $size,
@@ -124,6 +122,7 @@ final class LibraryScanner implements ScannerContract
         if ($byHash !== null) {
             $moved = $byHash->relative_path !== $relativePath;
             $byHash->update($attributes); // keeps content_hash + reading_progress (separate row)
+            $this->tags->sync($byHash, $parsed); // sync metadata tags / メタデータタグを同期
             $stats[$moved ? 'moved' : 'updated']++;
 
             return;
@@ -134,7 +133,8 @@ final class LibraryScanner implements ScannerContract
             ? null
             : $this->covers->generate($zipPath, $inspection->imageEntries[0], $inspection->contentHash);
 
-        Work::create($attributes);
+        $work = Work::create($attributes);
+        $this->tags->sync($work, $parsed); // sync metadata tags / メタデータタグを同期
         $stats['added']++;
     }
 }

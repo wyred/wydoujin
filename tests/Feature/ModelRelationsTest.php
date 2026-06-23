@@ -20,7 +20,7 @@ class ModelRelationsTest extends TestCase
         $work = Work::factory()
             ->for($mangaka)
             ->for($series)
-            ->create(['flags' => ['DL版'], 'entries' => ['001.jpg', '002.jpg']]);
+            ->create(['entries' => ['001.jpg', '002.jpg']]);
 
         ReadingProgress::create(['work_id' => $work->id, 'current_page' => 3]);
 
@@ -29,7 +29,6 @@ class ModelRelationsTest extends TestCase
         $this->assertTrue($series->works->contains($work));
         $this->assertEquals($mangaka->id, $work->mangaka->id);
         $this->assertEquals($series->id, $work->series->id);
-        $this->assertSame(['DL版'], $work->flags);
         $this->assertSame(['001.jpg', '002.jpg'], $work->entries);
         $this->assertSame(3, $work->readingProgress->current_page);
     }

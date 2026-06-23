@@ -3,6 +3,7 @@
 namespace Tests\Feature\Series;
 
 use App\Models\Series;
+use App\Models\Tag;
 use App\Models\Work;
 use App\Series\SeriesDetectorContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,11 +72,14 @@ class SeriesDetectorTest extends TestCase
 
     public function test_same_parody_distinct_titles_stay_standalone(): void
     {
-        // The Fate trap: shared parody, different titles → never a series. / パロディで結合しない。
-        $p = ['parody' => 'Fate/Grand Order'];
-        $this->seedWork('FateCircle', 'カルデアの日常', $p);
-        $this->seedWork('FateCircle', '謁見のあとで', $p);
-        $this->seedWork('FateCircle', 'ぐだ子とマシュ', $p);
+        // The Fate trap: shared parody tag, different titles → never a series. / パロディで結合しない。
+        $parody = Tag::firstOrCreate(['type' => 'parody', 'value' => 'Fate/Grand Order']);
+        $a = $this->seedWork('FateCircle', 'カルデアの日常');
+        $b = $this->seedWork('FateCircle', '謁見のあとで');
+        $c = $this->seedWork('FateCircle', 'ぐだ子とマシュ');
+        $a->tags()->attach($parody);
+        $b->tags()->attach($parody);
+        $c->tags()->attach($parody);
 
         $stats = $this->detector()->detect();
 

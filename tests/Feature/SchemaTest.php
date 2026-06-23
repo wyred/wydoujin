@@ -27,10 +27,11 @@ class SchemaTest extends TestCase
 
         $this->assertTrue(Schema::hasColumns('works', [
             'content_hash', 'mangaka_id', 'series_id', 'relative_path',
-            'title', 'title_raw', 'sort_title', 'event', 'circle', 'author',
-            'parody', 'language', 'flags', 'entries', 'page_count',
+            'title', 'title_raw', 'sort_title', 'entries', 'page_count',
             'cover_path', 'file_size', 'file_mtime', 'last_seen_at',
-            'is_missing', 'series_locked',
+            'is_missing', 'series_locked', 'tags_locked',
         ]));
+        $this->assertFalse(Schema::hasColumn('works', 'circle'));
+        $this->assertFalse(Schema::hasColumn('works', 'flags'));
     }
 }

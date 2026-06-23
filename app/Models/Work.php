@@ -15,7 +15,6 @@ class Work extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'flags' => 'array',
         'entries' => 'array',
         'is_missing' => 'boolean',
         'series_locked' => 'boolean',

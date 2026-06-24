@@ -56,7 +56,7 @@ services:
       # host path to the subfolder that holds <mangaka>/*.zip:
       #   - /mnt/nas/manga:/library:ro
       #
-      # Writable data: cached covers + Laravel storage. A named volume keeps
+      # Writable data: the cover cache (/data/covers) + FrankenPHP/Caddy state. A named volume keeps
       # permissions simple; for easy host backups use a bind mount instead, e.g.
       #   - ${DATA_PATH:-./data}:/data
       - wydoujin_data:/data
@@ -101,5 +101,5 @@ volumes:
       device: "//${SMB_HOST:?set SMB_HOST in .env}/${SMB_PATH:?set SMB_PATH in .env, e.g. media/manga}"
       o: "username=${SMB_USER},password=${SMB_PASS},uid=33,gid=33,ro,vers=3.1.1,iocharset=utf8,file_mode=0440,dir_mode=0550"
 
-  wydoujin_data:   # cached covers + Laravel storage
+  wydoujin_data:   # cover cache (/data/covers) + FrankenPHP/Caddy state
   wydoujin_db:     # bundled MySQL data (remove if using external MySQL)

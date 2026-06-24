@@ -52,7 +52,7 @@ Key environment variables (set in `.env`):
 | `APP_KEY` | Laravel app key (`php artisan key:generate`). |
 | `APP_PASSWORD` | Single-user gate. **Unset → the app is open**; set → one password guards everything except `/health` and `/login`. |
 | `LIBRARY_PATH` | Host path to your `<mangaka>/<doujin>.zip` library (mounted read-only). |
-| `DATA_PATH` | Writable data root (cached covers + Laravel storage). |
+| `DATA_PATH` | Writable data root; holds the resized-cover cache (`/data/covers`). |
 | `QUEUE_WORKERS` | Number of in-container background workers (library scans + cover generation). Default `1`, range `1`–`4`. |
 | `DB_PASSWORD` | **Required** — `docker compose up` fails fast if unset (no insecure default). |
 | `DB_ROOT_PASSWORD` | Required when using the bundled MySQL service. |

@@ -96,7 +96,7 @@ the image to GHCR on push to `main` and on `v*` tags.
   `scheduler` (periodic scan), and one or more `queue worker`s (scan + cover-gen jobs) under
   **s6-overlay**. Worker count = env **`QUEUE_WORKERS`** (default 1, range 1–4; the image bakes
   4 s6 worker slots — `worker`, `worker2`..`worker4` — and idle ones `sleep`). Volumes:
-  `/library` (read-only), `/data` (writable: cached covers + Laravel storage).
+  `/library` (read-only), `/data` (writable: the cover cache `/data/covers` + FrankenPHP/Caddy state via `XDG_DATA_HOME`; Laravel's `storage/` stays at `/app/storage`).
 - **Scanning & cover generation are queued jobs**, processed by the `QUEUE_WORKERS` queue
   worker(s) (default 1; the database queue's row locking keeps each job on a single worker, so
   added workers never double-process). Covers are generated with Intervention Image → `webp`

@@ -1,2 +1,2 @@
 #!/command/with-contenv sh
-exec frankenphp php-server --listen :8080 --root /app/public
+exec s6-setuidgid www-data frankenphp php-server --listen :8080 --root /app/public

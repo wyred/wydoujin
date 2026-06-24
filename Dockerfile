@@ -34,8 +34,12 @@ COPY --from=vendor /app/vendor ./vendor
 COPY --from=frontend /app/public/build ./public/build
 COPY docker/s6/s6-rc.d /etc/s6-overlay/s6-rc.d
 
-RUN mkdir -p /data /library \
-    && chown -R www-data:www-data /app/storage /app/bootstrap/cache /data
+# App processes run as www-data (see the s6 run scripts); FrankenPHP/Caddy needs
+# writable XDG dirs, and the init-perms oneshot re-chowns the /data volume at boot
+# (the volume mount masks this build-time chown). / 非rootで実行するためのXDG設定。
+ENV XDG_CONFIG_HOME=/config XDG_DATA_HOME=/data
+RUN mkdir -p /data /library /config \
+    && chown -R www-data:www-data /app/storage /app/bootstrap/cache /data /config
 
 EXPOSE 8080
 ENTRYPOINT ["/init"]

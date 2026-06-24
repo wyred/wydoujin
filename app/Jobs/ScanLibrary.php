@@ -20,6 +20,9 @@ final class ScanLibrary implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
+    /** A scan isn't meaningfully retryable; a poisoned file would just re-crash. / リトライしない。 */
+    public int $tries = 1;
+
     public function __construct(
         public readonly string $triggeredBy = 'manual',
         public readonly ?int $scanId = null,
@@ -52,5 +55,23 @@ final class ScanLibrary implements ShouldQueue
             $scan->update(['status' => 'failed', 'stats' => ['error' => $e->getMessage()], 'finished_at' => now()]);
             report($e);
         }
+    }
+
+    /**
+     * Terminal failure the try/catch can't see (timeout, or an uncatchable crash on a
+     * later attempt): mark the in-flight scan failed so it isn't stuck "running".
+     * try/catchで捕捉できない致命的失敗時にscans行をfailedにする（タイムアウト等）。
+     */
+    public function failed(?Throwable $e): void
+    {
+        $scan = $this->scanId
+            ? Scan::find($this->scanId)
+            : Scan::where('status', 'running')->latest()->first();
+
+        $scan?->update([
+            'status' => 'failed',
+            'stats' => ['error' => $e?->getMessage() ?? 'worker terminated'],
+            'finished_at' => now(),
+        ]);
     }
 }

@@ -82,3 +82,12 @@ test('throws on undecodable image', function (): void {
     $this->expectException(ArchiveException::class);
     (new CoverGenerator(new ZipPageReader(), $this->coversDir))->generate($zip, 'bad.png', 'h');
 });
+
+test('throws when cover image exceeds the pixel limit', function (): void {
+    $zip = makeZipCoverGenerator(['001.png' => pngBytesCoverGenerator(100, 100)]);
+
+    // 100x100 = 10000 px; cap at 1 to trip the pixel-flood guard before GD decodes.
+    $this->expectException(ArchiveException::class);
+    (new CoverGenerator(new ZipPageReader(), $this->coversDir, 400, 80, maxImagePixels: 1))
+        ->generate($zip, '001.png', 'h');
+});

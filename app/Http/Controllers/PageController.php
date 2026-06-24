@@ -32,8 +32,16 @@ final class PageController extends Controller
             return $response; // 304, body skipped, zip never opened
         }
 
+        // Confine the resolved path to the library root, so a crafted/symlinked
+        // relative_path can't read arbitrary host files. / ライブラリ外への解決を拒否。
+        $base = realpath(config('scan.library_path'));
+        $real = realpath(config('scan.library_path').'/'.$work->relative_path);
+        if ($base === false || $real === false || ! str_starts_with($real, $base.DIRECTORY_SEPARATOR)) {
+            abort(404);
+        }
+
         try {
-            $bytes = $reader->read(config('scan.library_path').'/'.$work->relative_path, $entryName);
+            $bytes = $reader->read($real, $entryName);
         } catch (ArchiveException $e) {
             report($e); // log corrupt/unreadable archives; client still gets 404 / 破損は記録し404
             abort(404);

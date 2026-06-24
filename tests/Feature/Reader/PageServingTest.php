@@ -43,6 +43,33 @@ test('out of range page is 404', function (): void {
     $this->get("/work/{$work->id}/page/0")->assertNotFound();
 });
 
+test('refuses a work whose path escapes the library root', function (): void {
+    $work = $this->makeReadableWork(['001.jpg']);
+
+    // A real zip OUTSIDE the library, reached via traversal — must be refused, not served.
+    $outside = sys_get_temp_dir().'/wyd-escape-'.uniqid().'.zip';
+    $zip = new \ZipArchive();
+    $zip->open($outside, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+    $zip->addFromString('001.jpg', 'host-secret');
+    $zip->close();
+    $work->update(['relative_path' => '../'.basename($outside)]);
+
+    try {
+        $this->get("/work/{$work->id}/page/1")->assertNotFound();
+    } finally {
+        @unlink($outside);
+    }
+});
+
+test('a corrupt zip inside the library is 404', function (): void {
+    $work = $this->makeReadableWork(['001.jpg']);
+    // Non-zip bytes at the real in-library path: passes confinement, but ZipArchive::open
+    // fails → the ArchiveException is caught + reported → 404.
+    file_put_contents($this->libraryPath.'/'.$work->relative_path, 'not a zip');
+
+    $this->get("/work/{$work->id}/page/1")->assertNotFound();
+});
+
 test('missing zip file is 404', function (): void {
     $mangaka = Mangaka::factory()->create();
     $work = Work::factory()->for($mangaka)->create([

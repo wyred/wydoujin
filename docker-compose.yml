@@ -19,6 +19,11 @@ services:
     depends_on:
       - mysql
     restart: unless-stopped
+    # Block privilege escalation. Not cap_drop:[ALL] — s6-setuidgid needs SETUID/SETGID to
+    # drop the app processes to www-data; a read-only rootfs would need tmpfs for storage.
+    # 権限昇格を禁止（s6-setuidgidにSETUID/SETGID必須のためcap全dropは不可）。
+    security_opt:
+      - no-new-privileges:true
 
   # Optional: to use an external MySQL server, remove this service AND the app's `depends_on: mysql` above, then point DB_HOST/DB_PORT/etc. at your server.
   mysql:
@@ -31,6 +36,8 @@ services:
     volumes:
       - wydoujin_db:/var/lib/mysql
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   wydoujin_data:

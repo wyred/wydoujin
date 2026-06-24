@@ -17,6 +17,7 @@ final class CoverGenerator
         private readonly string $coversDir,
         private readonly int $width = 400,
         private readonly int $quality = 80,
+        private readonly int $maxImagePixels = 40_000_000,
     ) {
     }
 
@@ -28,6 +29,14 @@ final class CoverGenerator
     public function generate(string $zipPath, string $entryName, string $contentHash): string
     {
         $bytes = $this->reader->read($zipPath, $entryName);
+
+        // Reject pixel-flood / decompression-bomb images before GD allocates the full
+        // bitmap (~width*height*4 bytes). getimagesizefromstring reads only the header.
+        // GDがビットマップを確保する前に巨大画像を拒否（ヘッダのみ読む）。
+        $info = getimagesizefromstring($bytes);
+        if ($info !== false && ($info[0] * $info[1]) > $this->maxImagePixels) {
+            throw new ArchiveException("Cover image for {$entryName} exceeds the pixel limit ({$info[0]}x{$info[1]})");
+        }
 
         if (! is_dir($this->coversDir)) {
             mkdir($this->coversDir, 0775, true);

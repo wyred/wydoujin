@@ -1,0 +1,20 @@
+version: 2
+# Keeps the pinned digests/SHAs and dependencies current — pinning is only safe with
+# an updater watching for security bumps. / 固定したダイジェスト/SHA/依存を最新に保つ。
+updates:
+  - package-ecosystem: composer
+    directory: "/"
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

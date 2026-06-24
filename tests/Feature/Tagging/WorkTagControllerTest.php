@@ -41,6 +41,22 @@ test('attach resolves a multi-hop alias chain to the final canonical', function 
     $this->assertSame([$canon->id], $work->fresh()->tags->pluck('id')->all());
 });
 
+test('attach ignores injected sensitive fields (mass-assignment boundary)', function (): void {
+    $work = Work::factory()->create(['content_hash' => 'original-hash', 'is_missing' => false]);
+
+    // Attacker-injected extras alongside the legit type/value must NOT reach the Work row.
+    $this->postJson('/work/'.$work->id.'/tags/attach', [
+        'type' => 'theme', 'value' => 'x',
+        'content_hash' => 'forged', 'is_missing' => true, 'series_locked' => true,
+    ])->assertStatus(201);
+
+    $work->refresh();
+    expect($work->content_hash)->toBe('original-hash'); // identity not hijacked
+    expect($work->is_missing)->toBeFalse();
+    expect($work->series_locked)->toBeFalse();
+    expect($work->tags_locked)->toBeTrue(); // the legitimate effect still happened
+});
+
 test('attach validates type and value', function (): void {
     $work = Work::factory()->create();
     $this->postJson('/work/'.$work->id.'/tags/attach', ['type' => 'bogus', 'value' => 'x'])->assertStatus(422);

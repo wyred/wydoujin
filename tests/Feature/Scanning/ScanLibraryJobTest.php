@@ -77,3 +77,24 @@ test('job creates a row when the given scan id is missing', function (): void {
     $this->assertSame('completed', $scan->status);
     $this->assertSame(1, $scan->stats['added']);
 });
+
+test('failed() marks the in-flight scan as failed (by id)', function (): void {
+    $scan = Scan::create(['status' => 'running', 'triggered_by' => 'scheduled', 'started_at' => now()]);
+
+    (new ScanLibrary('scheduled', $scan->id))->failed(new \RuntimeException('worker died'));
+
+    $scan->refresh();
+    $this->assertSame('failed', $scan->status);
+    $this->assertSame('worker died', $scan->stats['error']);
+    $this->assertNotNull($scan->finished_at);
+});
+
+test('failed() marks the latest running scan when no id was given', function (): void {
+    $scan = Scan::create(['status' => 'running', 'triggered_by' => 'scheduled', 'started_at' => now()]);
+
+    (new ScanLibrary('scheduled'))->failed(null);
+
+    $scan->refresh();
+    $this->assertSame('failed', $scan->status);
+    $this->assertSame('worker terminated', $scan->stats['error']);
+});

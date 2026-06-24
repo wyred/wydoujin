@@ -57,7 +57,12 @@
 .wyd-select {
     appearance: none;
     -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a8a8a' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    /* chevron stroke matches --color-ink-muted-48; a dark-mode override keeps it tracking
+       the theme like every other muted element (data-URI SVGs can't read CSS vars). */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237a7a7a' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 9px center;
+}
+[data-dark='true'] .wyd-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2398989d' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
 }

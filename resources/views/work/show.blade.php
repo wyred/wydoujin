@@ -69,7 +69,7 @@
                     </div>
 
                     <div class="flex items-center" style="gap:var(--space-xs); flex-wrap:wrap; position:relative;">
-                        <select x-model="newType" style="padding:6px 9px; border:1px solid var(--color-hairline); border-radius:var(--radius-sm); background:var(--surface-page); color:var(--text-body); font:var(--type-caption);">
+                        <select x-model="newType" class="wyd-select" style="padding:6px 28px 6px 9px; border:1px solid var(--color-hairline); border-radius:var(--radius-sm); background-color:var(--surface-page); color:var(--text-body); font:var(--type-caption);">
                             <template x-for="ty in types" :key="ty"><option :value="ty" x-text="ty"></option></template>
                         </select>
                         <input type="text" x-model="newValue" @input.debounce.200ms="suggest()" @keydown.enter.prevent="attach()" placeholder="value…"

@@ -50,3 +50,14 @@
 :focus:not(:focus-visible) {
     outline: none;
 }
+
+/* Native <select> renders at an inconsistent height (and ignores some padding) vs text
+   inputs, especially on macOS. Strip the native control and draw a custom chevron so the
+   styled selects line up with the inputs beside them. / selectの高さを入力欄に揃える。 */
+.wyd-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a8a8a' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+}

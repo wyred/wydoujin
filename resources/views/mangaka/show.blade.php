@@ -71,8 +71,8 @@
                 </div>
 
                 <div class="flex items-center" style="gap:var(--space-sm); flex-wrap:wrap;">
-                    <select x-model.number="addTarget"
-                            style="padding:7px 11px; border:1px solid var(--color-hairline); border-radius:var(--radius-sm); background:var(--surface-page); color:var(--text-body); font:var(--type-caption);">
+                    <select x-model.number="addTarget" class="wyd-select"
+                            style="padding:7px 28px 7px 11px; border:1px solid var(--color-hairline); border-radius:var(--radius-sm); background-color:var(--surface-page); color:var(--text-body); font:var(--type-caption);">
                         <option value="">Add to series…</option>
                         <template x-for="s in series" :key="s.id">
                             <option :value="s.id" x-text="s.name"></option>

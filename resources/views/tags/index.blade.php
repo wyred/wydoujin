@@ -38,8 +38,8 @@
                         <button type="button" x-show="editing === tag.id" @click="rename(tag)" :disabled="busy"
                                 style="background:none; border:none; padding:0; cursor:pointer; font:var(--type-fine); color:var(--text-link);">Save</button>
 
-                        <select @change="mergeTag(tag, $event.target.value); $event.target.value = ''" :disabled="busy"
-                                style="padding:4px 8px; border:1px solid var(--color-hairline); border-radius:var(--radius-sm); background:var(--surface-page); color:var(--text-body); font:var(--type-fine);">
+                        <select @change="mergeTag(tag, $event.target.value); $event.target.value = ''" :disabled="busy" class="wyd-select"
+                                style="padding:4px 24px 4px 8px; border:1px solid var(--color-hairline); border-radius:var(--radius-sm); background-color:var(--surface-page); color:var(--text-body); font:var(--type-fine);">
                             <option value="">Merge into…</option>
                             <template x-for="t in group.tags.filter((o) => o.id !== tag.id)" :key="t.id">
                                 <option :value="t.id" x-text="t.value"></option>

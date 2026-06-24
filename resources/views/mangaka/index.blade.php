@@ -4,7 +4,7 @@
     <x-nav active="mangaka" />
 
     <main class="mx-auto w-full" style="max-width:var(--container-grid); padding:var(--space-xl) var(--space-lg);">
-        <x-section-heading>Mangaka</x-section-heading>
+        <x-page-heading>Mangaka</x-page-heading>
 
         @if ($mangaka->isEmpty())
             <p style="font:var(--type-body); color:var(--text-muted);">No mangaka yet — run <code>wydoujin:scan</code>.</p>

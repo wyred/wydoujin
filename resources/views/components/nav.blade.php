@@ -1,14 +1,14 @@
 @props(['active' => null])
 
-<nav class="flex items-center" style="height:44px; background:var(--color-black); gap:var(--space-xl); padding:0 var(--space-xl);">
+<nav aria-label="Primary" class="flex items-center" style="height:44px; background:var(--color-black); gap:var(--space-xl); padding:0 var(--space-xl);">
     <a href="/" class="no-underline" style="font:var(--weight-semibold) 18px/1 var(--font-display); letter-spacing:-0.2px; color:var(--color-on-dark);">wydoujin</a>
 
     <div class="flex items-center" style="gap:var(--space-lg); flex:1;">
-        <a href="/" class="no-underline {{ $active === 'home' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Home</a>
-        <a href="/mangaka" class="no-underline {{ $active === 'mangaka' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Mangaka</a>
-        <a href="/browse" class="no-underline {{ $active === 'browse' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Browse</a>
-        <a href="/tags" class="no-underline {{ $active === 'tags' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Tags</a>
-        <a href="/maintenance" class="no-underline {{ $active === 'maintenance' ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]" style="font:var(--type-nav);">Maintenance</a>
+        @foreach (['home' => ['/', 'Home'], 'mangaka' => ['/mangaka', 'Mangaka'], 'browse' => ['/browse', 'Browse'], 'tags' => ['/tags', 'Tags'], 'maintenance' => ['/maintenance', 'Maintenance']] as $key => [$href, $label])
+            <a href="{{ $href }}" @if ($active === $key) aria-current="page" @endif
+               class="no-underline {{ $active === $key ? '[color:var(--color-on-dark)]' : '[color:var(--color-body-muted)]' }} hover:[color:var(--color-on-dark)]"
+               style="font:var(--type-nav);">{{ $label }}</a>
+        @endforeach
     </div>
 
     <button type="button"

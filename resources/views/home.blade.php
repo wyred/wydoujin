@@ -12,6 +12,7 @@
                 </p>
             </div>
         @else
+            <h1 class="sr-only">Library</h1>
             @if ($continueReading->isNotEmpty())
                 <section style="margin-bottom:var(--space-xxl);">
                     <x-section-heading>Continue Reading</x-section-heading>

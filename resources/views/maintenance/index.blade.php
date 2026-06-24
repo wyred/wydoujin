@@ -11,7 +11,7 @@
 
         {{-- Scan panel + history (Alpine, live) --}}
         <div x-data="maintenance(@js($initial))">
-            <x-section-heading>Library</x-section-heading>
+            <x-page-heading>Library</x-page-heading>
 
             <div class="flex items-center" style="gap:var(--space-md); margin-bottom:var(--space-xl); flex-wrap:wrap;">
                 <x-button type="button" x-on:click="scan()" x-bind:disabled="scanning || busy"

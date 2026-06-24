@@ -48,12 +48,9 @@ class AppServiceProvider extends ServiceProvider
             config('scan.limits.max_image_pixels'),
         ));
 
-        // Scanner/detector are bound, not singletons: each carries per-scan state
-        // (e.g. WorkTagSync's canonical-id cache), so every scan resolves a fresh one.
-        // スキャナ/検出器はスキャン毎の状態を持つため毎回生成（シングルトンにしない）。
+        // Scanner is bound, not a singleton: WorkTagSync carries per-scan canonical-id
+        // state, so each finalize resolves a fresh one. / スキャン毎の状態のため毎回生成。
         $this->app->bind(LibraryScanner::class, fn ($app) => new LibraryScanner(
-            $app->make(ArchiveInspector::class),
-            $app->make(FilenameParser::class),
             $app->make(WorkTagSync::class),
             config('scan.library_path'),
         ));

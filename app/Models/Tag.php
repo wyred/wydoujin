@@ -75,6 +75,8 @@ class Tag extends Model
      */
     public static function canonicalIdFor(string $type, string $value): int
     {
+        // firstOrCreate routes through createOrFirst, which is already race-safe (it catches a
+        // unique-violation from a concurrent insert and re-reads). / 競合は本体で安全に解決。
         $tag = self::firstOrCreate(['type' => $type, 'value' => $value]);
 
         // Follow the alias chain. The FK guarantees each target exists; the visited

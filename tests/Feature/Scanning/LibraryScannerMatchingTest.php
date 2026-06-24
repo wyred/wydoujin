@@ -2,7 +2,6 @@
 
 use App\Models\ReadingProgress;
 use App\Models\Work;
-use App\Scanning\LibraryScanner;
 use Tests\Feature\Scanning\BuildsLibraryFixtures;
 
 uses(BuildsLibraryFixtures::class);
@@ -13,9 +12,9 @@ afterEach(fn () => $this->cleanLibrary());
 test('fresh scan creates works with parsed metadata and cover', function (): void {
     $this->makeDoujin('Z.A.P.', '(C89) [Z.A.P. (ズッキーニ)] 四畳半物語 (オリジナル) [DL版]');
 
-    $stats = app(LibraryScanner::class)->scan();
+    $scan = $this->runScan();
 
-    $this->assertSame(1, $stats['added']);
+    $this->assertSame(1, $scan->stats['added']);
     $work = Work::firstOrFail();
     $this->assertSame('四畳半物語', $work->title);
     // Metadata now lives in tags. / メタデータはタグに。
@@ -27,6 +26,7 @@ test('fresh scan creates works with parsed metadata and cover', function (): voi
     $this->assertSame(['001.jpg', '002.jpg'], $work->entries);
     $this->assertSame('Z.A.P.', $work->mangaka->name);
     $this->assertNotEmpty($work->mangaka->slug);
+    // Cover is rendered by the offloaded GenerateCover task (runs inline under sync).
     $this->assertNotNull($work->cover_path);
     $this->assertFileExists($this->dataPath.'/'.$work->cover_path);
 });
@@ -34,7 +34,7 @@ test('fresh scan creates works with parsed metadata and cover', function (): voi
 test('japanese mangaka folder gets nonempty slug', function (): void {
     $this->makeDoujin('ズッキーニ', 'タイトル');
 
-    app(LibraryScanner::class)->scan();
+    $this->runScan();
 
     $work = Work::firstOrFail();
     $this->assertSame('ズッキーニ', $work->mangaka->name);
@@ -44,19 +44,19 @@ test('japanese mangaka folder gets nonempty slug', function (): void {
 
 test('rescan unchanged file is skipped', function (): void {
     $this->makeDoujin('Circle', 'Title');
-    $first = app(LibraryScanner::class)->scan();
-    $this->assertSame(1, $first['added']);
+    $first = $this->runScan();
+    $this->assertSame(1, $first->stats['added']);
 
-    $second = app(LibraryScanner::class)->scan();
-    $this->assertSame(0, $second['added']);
-    $this->assertSame(0, $second['updated']);
-    $this->assertSame(0, $second['moved']);
+    $second = $this->runScan();
+    $this->assertSame(0, $second->stats['added']);
+    $this->assertSame(0, $second->stats['updated']);
+    $this->assertSame(0, $second->stats['moved']);
     $this->assertSame(1, Work::count());
 });
 
 test('moved file keeps reading progress', function (): void {
     $path = $this->makeDoujin('OldCircle', 'Title');
-    app(LibraryScanner::class)->scan();
+    $this->runScan();
     $work = Work::firstOrFail();
     ReadingProgress::create(['work_id' => $work->id, 'current_page' => 7]);
 
@@ -65,9 +65,9 @@ test('moved file keeps reading progress', function (): void {
     mkdir($newDir, 0775, true);
     rename($path, $newDir.'/Title.zip');
 
-    $stats = app(LibraryScanner::class)->scan();
+    $scan = $this->runScan();
 
-    $this->assertSame(1, $stats['moved']);
+    $this->assertSame(1, $scan->stats['moved']);
     $this->assertSame(1, Work::count());
     $work->refresh();
     $this->assertSame('NewCircle/Title.zip', $work->relative_path);

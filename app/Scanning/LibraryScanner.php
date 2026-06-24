@@ -2,57 +2,71 @@
 
 namespace App\Scanning;
 
-use App\Archive\ArchiveException;
-use App\Archive\ArchiveInspector;
-use App\Jobs\GenerateCover;
+use App\Jobs\ProcessZip;
 use App\Models\Mangaka;
 use App\Models\Work;
-use App\Parsing\FilenameParser;
 use App\Tagging\WorkTagSync;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Walks the library and syncs works into the DB by content_hash. / ライブラリを走査しworksを同期。
+ * Plans a library scan into one ProcessZip task per zip, and finalises it once those
+ * tasks finish. The per-zip work itself lives in App\Jobs\ProcessZip so a huge library
+ * parallelises across workers. / スキャンをzip毎のタスクに分割し、完了後に総仕上げ。
  */
 final class LibraryScanner implements ScannerContract
 {
     public function __construct(
-        private readonly ArchiveInspector $inspector,
-        private readonly FilenameParser $parser,
         private readonly WorkTagSync $tags,
         private readonly string $libraryPath,
     ) {
     }
 
-    /** @return array<string,int> stats (added, updated, moved, missing, failed) */
-    public function scan(): array
+    /**
+     * Resolve every mangaka folder (sequentially, so concurrent tasks never race to create
+     * the same Mangaka) and emit one ProcessZip task per zip.
+     * マンガ家を逐次解決し（作成競合回避）、zip毎にProcessZipタスクを生成。
+     *
+     * @return list<ProcessZip>
+     */
+    public function planJobs(int $scanId, string $scanStartIso): array
     {
-        $stats = ['added' => 0, 'updated' => 0, 'moved' => 0, 'missing' => 0, 'failed' => 0];
-        $scanStart = Carbon::now();
-
+        $jobs = [];
         foreach ($this->mangakaFolders() as $folder) {
             $mangaka = $this->resolveMangaka(basename($folder));
             foreach (glob($folder.'/*.zip') ?: [] as $zipPath) {
-                try {
-                    $this->processZip($zipPath, $mangaka, $scanStart, $stats);
-                } catch (ArchiveException $e) {
-                    $stats['failed']++;
-                    report($e); // log and continue / 記録して継続
-                }
+                $relativePath = substr($zipPath, strlen($this->libraryPath) + 1);
+                $jobs[] = new ProcessZip(
+                    $scanId,
+                    $mangaka->id,
+                    $mangaka->name,
+                    $zipPath,
+                    $relativePath,
+                    $scanStartIso,
+                );
             }
         }
 
-        // Missing sweep + orphan prune, atomically. / 欠落掃引と孤立タグ削除を原子的に。
-        DB::transaction(function () use ($scanStart, &$stats): void {
-            $stats['missing'] = Work::where('last_seen_at', '<', $scanStart)
+        return $jobs;
+    }
+
+    /**
+     * Sweep works untouched this scan as missing and prune orphan tags, atomically.
+     * Returns the number flagged missing. / 欠落掃引と孤立タグ削除（原子的）。欠落数を返す。
+     */
+    public function finalize(string $scanStartIso): int
+    {
+        $scanStart = Carbon::parse($scanStartIso);
+
+        return DB::transaction(function () use ($scanStart): int {
+            $missing = Work::where('last_seen_at', '<', $scanStart)
                 ->present()
                 ->update(['is_missing' => true]);
             $this->tags->pruneOrphans(); // drop tags no work references / 参照されないタグを削除
-        });
 
-        return $stats;
+            return $missing;
+        });
     }
 
     /** @return string[] absolute paths of top-level mangaka folders */
@@ -84,63 +98,5 @@ final class LibraryScanner implements ScannerContract
         }
 
         return $slug;
-    }
-
-    /** @param array<string,int> $stats */
-    private function processZip(string $zipPath, Mangaka $mangaka, Carbon $scanStart, array &$stats): void
-    {
-        $relativePath = substr($zipPath, strlen($this->libraryPath) + 1);
-        $size = (int) filesize($zipPath);
-        $mtime = (int) filemtime($zipPath);
-
-        // Fast incremental skip: same path, unchanged size + mtime. / 高速スキップ。
-        $atPath = Work::where('relative_path', $relativePath)->first();
-        if ($atPath !== null && (int) $atPath->file_size === $size && (int) $atPath->file_mtime === $mtime) {
-            $atPath->update(['last_seen_at' => $scanStart, 'is_missing' => false]);
-
-            return;
-        }
-
-        $inspection = $this->inspector->inspect($zipPath);
-        $parsed = $this->parser->parse(pathinfo($zipPath, PATHINFO_FILENAME), $mangaka->name);
-
-        $attributes = [
-            'mangaka_id' => $mangaka->id,
-            'relative_path' => $relativePath,
-            'filename' => basename($zipPath),
-            'title' => $parsed->title,
-            'title_raw' => $parsed->titleRaw,
-            'sort_title' => $parsed->sortTitle,
-            'page_count' => $inspection->pageCount,
-            'entries' => $inspection->imageEntries,
-            'file_size' => $size,
-            'file_mtime' => $mtime,
-            'last_seen_at' => $scanStart,
-            'is_missing' => false,
-        ];
-
-        $byHash = Work::where('content_hash', $inspection->contentHash)->first();
-        if ($byHash !== null) {
-            $moved = $byHash->relative_path !== $relativePath;
-            $byHash->update($attributes); // keeps content_hash + reading_progress (separate row)
-            $this->tags->sync($byHash, $parsed); // sync metadata tags / メタデータタグを同期
-            $stats[$moved ? 'moved' : 'updated']++;
-
-            return;
-        }
-
-        // Cover starts null; generating it (decode + resize) is the slow part, so it's
-        // offloaded to a queued GenerateCover job that another worker handles — this keeps
-        // the scan fast on huge libraries. / 表紙生成は別ジョブに委譲（巨大ライブラリでも高速）。
-        $attributes['content_hash'] = $inspection->contentHash;
-
-        $work = Work::create($attributes);
-        $this->tags->sync($work, $parsed); // sync metadata tags / メタデータタグを同期
-
-        if ($inspection->imageEntries !== []) {
-            GenerateCover::dispatch($work->id);
-        }
-
-        $stats['added']++;
     }
 }

@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Scanning;
 
+use App\Jobs\ScanLibrary;
+use App\Models\Scan;
+use App\Scanning\LibraryScanner;
 use ZipArchive;
 
 /** Builds a temp library of <mangaka>/<doujin>.zip with real GD images. / テスト用ライブラリ生成。 */
@@ -9,6 +12,19 @@ trait BuildsLibraryFixtures
 {
     private string $libraryPath;
     private string $dataPath;
+
+    /**
+     * Run a full scan synchronously and return the completed Scan row. Under the test queue
+     * (sync) the ProcessZip batch + FinalizeScan run inline, so on return the scan is closed
+     * out with its stats. / 同期実行で全パイプラインを走らせ、完了したScanを返す。
+     */
+    private function runScan(string $triggeredBy = 'manual'): Scan
+    {
+        $scan = Scan::create(['status' => 'queued', 'triggered_by' => $triggeredBy]);
+        (new ScanLibrary($triggeredBy, $scan->id))->handle(app(LibraryScanner::class));
+
+        return $scan->refresh();
+    }
 
     private function bootLibrary(): void
     {

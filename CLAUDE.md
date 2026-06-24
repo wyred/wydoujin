@@ -66,11 +66,12 @@ the image to GHCR on push to `main` and on `v*` tags.
 - **Tags (F4):** `TagController` (`/tags` — global rename/merge, durable via merge-alias) ·
   `WorkTagController` (`/work/{id}/tags/{attach,detach,reset}` + `/tags/suggest` — per-work editing).
 - **Backend services:** `app/Parsing/` (parser + pattern classes) · `app/Archive/` (zip inspection,
-  page reader, cover gen) · `app/Scanning/LibraryScanner.php` · `app/Series/` (`SeriesDetector`,
-  `TitleNormalizer`) · `app/Tagging/` (`WorkTagSync` — derive/sync tags, resolve aliases, prune
-  orphans; `LegacyScalarBackfill`) · `app/Jobs/ScanLibrary.php` (the scan) ·
-  `app/Jobs/GenerateCover.php` (per-work cover render, dispatched by the scanner so cover
-  decoding never blocks the scan — keeps huge libraries from timing out).
+  page reader, cover gen) · `app/Scanning/LibraryScanner.php` (plans per-zip tasks + finalises) ·
+  `app/Series/` (`SeriesDetector`, `TitleNormalizer`) · `app/Tagging/` (`WorkTagSync` — derive/sync
+  tags, resolve aliases, prune orphans; `LegacyScalarBackfill`) · the scan job pipeline:
+  `app/Jobs/ScanLibrary.php` (plans + fans out a batch) → `app/Jobs/ProcessZip.php` (one task per
+  zip: inspect, upsert by `content_hash`, sync tags) → `app/Jobs/GenerateCover.php` (per-work cover
+  render) → `app/Jobs/FinalizeScan.php` (batch `finally`: missing-sweep, prune, series detect, stats).
 - **UI:** Blade in `resources/views/`; Alpine components registered inline via `alpine:init`;
   reusable partials in `resources/views/components/` (`x-nav`, `x-cover`, `x-work-card`, `x-badge`,
   `x-button`, `x-section-heading`).
@@ -99,15 +100,18 @@ the image to GHCR on push to `main` and on `v*` tags.
   **s6-overlay**. Worker count = env **`QUEUE_WORKERS`** (default 1, range 1–4; the image bakes
   4 s6 worker slots — `worker`, `worker2`..`worker4` — and idle ones `sleep`). Volumes:
   `/library` (read-only), `/data` (writable: the cover cache `/data/covers` + FrankenPHP/Caddy state via `XDG_DATA_HOME`; Laravel's `storage/` stays at `/app/storage`).
-- **Scanning & cover generation are separate queued jobs**, processed by the `QUEUE_WORKERS` queue
-  worker(s) (default 1; the database queue's row locking keeps each job on a single worker, so
-  added workers never double-process). The `ScanLibrary` scan walks the library and, for each
-  newly-added work, dispatches a `GenerateCover` job another worker picks up — so the scan stays
-  fast and a single bad image never fails the scan (the cover job logs and leaves `cover_path`
-  null). Covers are generated with Intervention Image → `webp` under `/data/covers/`. The scan
-  job carries its own long per-job timeout (`SCAN_TIMEOUT`, default 3600s) since a big first scan
-  is O(library size) and outlives the queue's default 60s; `DB_QUEUE_RETRY_AFTER` is kept above
-  it (defaults to `SCAN_TIMEOUT + 60`) so a running scan is never re-reserved by another worker.
+- **A scan is a fan-out of queued jobs**, processed by the `QUEUE_WORKERS` worker(s). `ScanLibrary`
+  resolves mangaka (sequentially, so parallel tasks never race to create one) and dispatches a
+  **batch of one `ProcessZip` task per zip** — so a huge library parallelises across workers and no
+  single job can time out. Each `ProcessZip` upserts its work by `content_hash` (catching a rare
+  duplicate-hash insert race), syncs tags, and dispatches a `GenerateCover` task (cover decode is
+  offloaded again; a bad image logs and leaves `cover_path` null, never failing the work). Live
+  add/update/move/failed counts are atomic increments on the `scans` row. When every task is done
+  the batch's `finally` fires **`FinalizeScan`** (missing-sweep + orphan-prune + series detection,
+  folding the counters into the final `stats`). Covers are Intervention Image → `webp` under
+  `/data/covers/`. `ScanLibrary`/`FinalizeScan` carry a long per-job timeout (`SCAN_TIMEOUT`, default
+  3600s); `DB_QUEUE_RETRY_AFTER` stays above it (defaults to `SCAN_TIMEOUT + 60`) so a long job is
+  never re-reserved by another worker mid-flight.
 
 ### Data model (7 tables)
 `mangaka` (one per top folder) · `series` (per-mangaka grouping) · `works` (one per `.zip`;

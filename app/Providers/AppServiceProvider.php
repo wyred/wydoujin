@@ -33,6 +33,11 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(ArchiveInspector::class, fn () => new ArchiveInspector(
             config('scan.image_extensions'),
+            config('scan.limits.max_entries'),
+        ));
+
+        $this->app->singleton(ZipPageReader::class, fn () => new ZipPageReader(
+            config('scan.limits.max_entry_bytes'),
         ));
 
         $this->app->singleton(CoverGenerator::class, fn ($app) => new CoverGenerator(
@@ -40,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
             config('scan.data_path').'/covers',
             config('scan.cover.width'),
             config('scan.cover.quality'),
+            config('scan.limits.max_image_pixels'),
         ));
 
         // Scanner/detector are bound, not singletons: each carries per-scan state

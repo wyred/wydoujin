@@ -28,6 +28,10 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
 # PHP extensions needed by Laravel + image work (mbstring added: required by Laravel core and intervention/image v4)
 RUN install-php-extensions pdo_mysql zip gd intl opcache pcntl mbstring
 
+# Bounded memory_limit — backstop so an untrusted image/zip fails one request/job
+# instead of OOM-killing the process. / メモリ上限のバックストップ。
+COPY docker/php/wydoujin.ini /usr/local/etc/php/conf.d/zz-wydoujin.ini
+
 WORKDIR /app
 COPY . .
 COPY --from=vendor /app/vendor ./vendor

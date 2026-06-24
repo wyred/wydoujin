@@ -25,4 +25,11 @@ return [
         'width' => (int) env('SCAN_COVER_WIDTH', 400),
         'quality' => (int) env('SCAN_COVER_QUALITY', 80),
     ],
+
+    // Hardening caps against malicious archives/images (untrusted file content). / 悪意あるzip/画像への上限。
+    'limits' => [
+        'max_entries' => (int) env('SCAN_MAX_ENTRIES', 10000),             // entries per zip / zip内エントリ数
+        'max_entry_bytes' => (int) env('SCAN_MAX_ENTRY_BYTES', 52428800),  // 50 MB decompressed / 展開後サイズ
+        'max_image_pixels' => (int) env('SCAN_MAX_IMAGE_PIXELS', 40000000), // 40 MP cover decode / 表紙デコード画素数
+    ],
 ];

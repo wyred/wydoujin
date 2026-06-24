@@ -36,6 +36,13 @@ afterEach(function () {
     }
 });
 
+test('rejects an archive with too many entries', function (): void {
+    $zip = makeZipArchiveInspector(['001.jpg' => 'a', '002.jpg' => 'b']);
+
+    expect(fn () => (new ArchiveInspector(maxEntries: 1))->inspect($zip))
+        ->toThrow(ArchiveException::class);
+});
+
 test('filters images and natural sorts including nested', function (): void {
     $zip = makeZipArchiveInspector([
         '10.jpg' => 'x', '1.jpg' => 'x', '2.jpg' => 'x',

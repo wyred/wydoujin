@@ -17,8 +17,10 @@ final class ArchiveInspector
     private array $imageExtensions;
 
     /** @param string[] $imageExtensions */
-    public function __construct(array $imageExtensions = self::DEFAULT_IMAGE_EXTENSIONS)
-    {
+    public function __construct(
+        array $imageExtensions = self::DEFAULT_IMAGE_EXTENSIONS,
+        private readonly int $maxEntries = 10000,
+    ) {
         $this->imageExtensions = array_map('strtolower', $imageExtensions);
     }
 
@@ -28,6 +30,14 @@ final class ArchiveInspector
         $zip = new ZipArchive();
         if ($zip->open($zipPath, ZipArchive::RDONLY) !== true) {
             throw new ArchiveException("Cannot open zip: {$zipPath}");
+        }
+
+        // Reject pathological archives early (the central-dir loop + entries JSON scale with this).
+        // 異常に多いエントリは早期に拒否。
+        if ($zip->numFiles > $this->maxEntries) {
+            $count = $zip->numFiles;
+            $zip->close();
+            throw new ArchiveException("Archive has too many entries ({$count}) in {$zipPath}");
         }
 
         try {

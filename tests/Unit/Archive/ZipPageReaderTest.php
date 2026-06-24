@@ -32,3 +32,9 @@ test('throws when zip cannot be opened', function (): void {
     $this->expectException(ArchiveException::class);
     (new ZipPageReader())->read(sys_get_temp_dir().'/wyd-does-not-exist-'.uniqid().'.zip', '001.jpg');
 });
+
+test('throws when entry exceeds the size limit', function (): void {
+    // '001.jpg' is 17 bytes; cap at 5 to trip the zip-bomb guard before decompression.
+    $this->expectException(ArchiveException::class);
+    (new ZipPageReader(maxEntryBytes: 5))->read($this->zipPath, '001.jpg');
+});

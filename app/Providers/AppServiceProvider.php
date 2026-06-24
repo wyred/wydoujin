@@ -41,6 +41,9 @@ class AppServiceProvider extends ServiceProvider
             config('scan.cover.quality'),
         ));
 
+        // Scanner/detector are bound, not singletons: each carries per-scan state
+        // (e.g. WorkTagSync's canonical-id cache), so every scan resolves a fresh one.
+        // スキャナ/検出器はスキャン毎の状態を持つため毎回生成（シングルトンにしない）。
         $this->app->bind(LibraryScanner::class, fn ($app) => new LibraryScanner(
             $app->make(ArchiveInspector::class),
             $app->make(CoverGenerator::class),
@@ -52,13 +55,5 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ScannerContract::class, fn ($app) => $app->make(LibraryScanner::class));
 
         $this->app->bind(SeriesDetectorContract::class, fn ($app) => $app->make(SeriesDetector::class));
-    }
-
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        //
     }
 }

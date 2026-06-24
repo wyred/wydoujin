@@ -80,8 +80,11 @@ document.addEventListener('alpine:init', () => {
         pageUrl(n) { return '/work/' + this.id + '/page/' + n; },
         next() { if (this.page < this.pages) this.page++; },
         prev() { if (this.page > 1) this.page--; },
-        goLeft() { this.dir === 'rtl' ? this.next() : this.prev(); this.showChrome(); },
-        goRight() { this.dir === 'rtl' ? this.prev() : this.next(); this.showChrome(); },
+        // Turning pages must NOT reveal the chrome — reading stays immersive. The bars are
+        // summoned deliberately (center tap → toggleChrome) or by mouse movement.
+        // ページ送りではバーを出さない（中央タップ/マウス移動で明示的に表示）。
+        goLeft() { this.dir === 'rtl' ? this.next() : this.prev(); },
+        goRight() { this.dir === 'rtl' ? this.prev() : this.next(); },
         preload() {
             [this.page + 1, this.page + 2].forEach((n) => {
                 if (n <= this.pages) { const img = new Image(); img.src = this.pageUrl(n); }

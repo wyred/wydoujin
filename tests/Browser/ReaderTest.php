@@ -50,6 +50,24 @@ test('reader ArrowLeft advances to next page in RTL mode via keyboard event', fu
         ->assertNoJavaScriptErrors();
 });
 
+test('reader chrome stays hidden while turning pages', function (): void {
+    $work = $this->makeReadableWork(['001.jpg', '002.jpg', '003.jpg']);
+
+    $page = visit('/work/'.$work->id.'/read');
+
+    // Simulate the idle auto-hide having fired (instead of waiting 2500ms).
+    // アイドル自動非表示が起きた状態を再現。
+    $page->script('Alpine.$data(document.querySelector("[x-data]")).chrome = false');
+
+    // Turn the page via keyboard — the chrome must stay hidden (immersive reading).
+    // キーボードでページ送り — クロムは非表示のまま。
+    $page->script('document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }))');
+
+    $page->assertScript('Alpine.$data(document.querySelector("[x-data]")).page', 2)
+        ->assertScript('Alpine.$data(document.querySelector("[x-data]")).chrome', false)
+        ->assertNoJavaScriptErrors();
+});
+
 test('reader settings panel opens and shows direction controls', function (): void {
     $work = $this->makeReadableWork(['001.jpg', '002.jpg']);
 

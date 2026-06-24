@@ -77,14 +77,12 @@ class Tag extends Model
     {
         $tag = self::firstOrCreate(['type' => $type, 'value' => $value]);
 
+        // Follow the alias chain. The FK guarantees each target exists; the visited
+        // set only guards against a (shouldn't-happen) cycle. / 別名連鎖を辿る。
         $seen = [];
         while ($tag->merged_into_id !== null && ! isset($seen[$tag->id])) {
             $seen[$tag->id] = true;
-            $next = self::find($tag->merged_into_id);
-            if ($next === null) {
-                break;
-            }
-            $tag = $next;
+            $tag = self::findOrFail($tag->merged_into_id);
         }
 
         return (int) $tag->id;

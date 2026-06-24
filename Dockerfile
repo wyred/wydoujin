@@ -30,8 +30,11 @@ ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLA
 RUN echo "ad982a801bd72757c7b1b53539a146cf715e640b4d8f0a6a671a3d1b560fe1e2  /tmp/s6-overlay-x86_64.tar.xz" | sha256sum -c - \
     && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
 
-# PHP extensions needed by Laravel + image work (mbstring added: required by Laravel core and intervention/image v4)
-RUN install-php-extensions pdo_mysql zip gd intl opcache pcntl mbstring
+# PHP extensions needed by Laravel + image work (mbstring: Laravel core + intervention/image v4).
+# imagick: CoverGenerator prefers it over gd — its pixel cache is C-side (bounded by
+# resource limits, spills to disk, so it can't trip PHP's memory_limit) and it does
+# libjpeg shrink-on-load, decoding large JPEG covers at a fraction of full size.
+RUN install-php-extensions pdo_mysql zip gd imagick intl opcache pcntl mbstring
 
 # Bounded memory_limit — backstop so an untrusted image/zip fails one request/job
 # instead of OOM-killing the process. / メモリ上限のバックストップ。

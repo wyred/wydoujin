@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # --- Frontend build ---
-FROM node:22-alpine AS frontend
+# Base images pinned by digest (reproducible; a re-tag can't change the build). Keep the
+# tag comment for readability; bump digests via Dependabot. / 再現性のためダイジェスト固定。
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -10,20 +12,23 @@ COPY vite.config.js ./
 RUN npm run build
 
 # --- PHP deps ---
-FROM composer:2 AS vendor
+FROM composer:2@sha256:7725eb4545c438629ae8bde3ef0bb9a5038ef566126ad878442a69007242d267 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --prefer-dist --no-interaction --optimize-autoloader
 
 # --- Runtime ---
-FROM dunglas/frankenphp:1-php8.3 AS runtime
+FROM dunglas/frankenphp:1-php8.3@sha256:e56d10584026d0bb9d6048c8873664e2d0c0640c385614149cd81addb58e08a3 AS runtime
 
 # s6-overlay
 ARG S6_OVERLAY_VERSION=3.2.0.0
+# Verify the SHA-256 of each tarball before extracting it into / as PID-1 init code. / 展開前にSHA-256検証。
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp/
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
+RUN echo "4b0c0907e6762814c31850e0e6c6762c385571d4656eb8725852b0b1586713b6  /tmp/s6-overlay-noarch.tar.xz" | sha256sum -c - \
+    && tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp/
-RUN tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
+RUN echo "ad982a801bd72757c7b1b53539a146cf715e640b4d8f0a6a671a3d1b560fe1e2  /tmp/s6-overlay-x86_64.tar.xz" | sha256sum -c - \
+    && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
 
 # PHP extensions needed by Laravel + image work (mbstring added: required by Laravel core and intervention/image v4)
 RUN install-php-extensions pdo_mysql zip gd intl opcache pcntl mbstring

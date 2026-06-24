@@ -45,8 +45,8 @@ final class WorkTagSync
     public function derive(ParsedName $parsed): array
     {
         $pairs = [];
-        $scalars = ['circle' => $parsed->circle, 'parody' => $parsed->parody, 'event' => $parsed->event, 'author' => $parsed->author];
-        foreach ($scalars as $type => $value) {
+        foreach (Tag::SCALAR_TYPES as $type) {
+            $value = $parsed->{$type}; // property names mirror SCALAR_TYPES / プロパティ名はSCALAR_TYPESと一致
             if ($value !== null && $value !== '') {
                 $pairs[] = [$type, $value];
             }

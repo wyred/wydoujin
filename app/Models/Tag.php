@@ -19,9 +19,14 @@ class Tag extends Model
 {
     use HasFactory;
 
-    /** All types. AUTO_TYPES are scanner-derived; others are manual-only. / 全タイプ。 */
-    public const TYPES = ['circle', 'parody', 'event', 'author', 'flag', 'theme'];
-    public const AUTO_TYPES = ['circle', 'parody', 'event', 'author', 'flag'];
+    /** Scalar metadata types — one value per work, scanner-derived. / スカラー型（作品毎1値）。 */
+    public const SCALAR_TYPES = ['circle', 'parody', 'event', 'author'];
+
+    /** Scanner-derived types: scalars + multi-valued flags. / スキャナ由来の型。 */
+    public const AUTO_TYPES = [...self::SCALAR_TYPES, 'flag'];
+
+    /** All tag types: auto (scanner) + manual-only theme. / 全タイプ（自動＋手動theme）。 */
+    public const TYPES = [...self::AUTO_TYPES, 'theme'];
 
     protected $guarded = [];
 

@@ -15,6 +15,8 @@ final class LegacyScalarBackfill
     {
         DB::table('works')->orderBy('id')->each(function (object $work): void {
             $pairs = [];
+            // Mirrors Tag::SCALAR_TYPES; kept inline so this migration helper stays
+            // model-independent. / Tag::SCALAR_TYPESと同一（移行用のため意図的にインライン）。
             foreach (['circle', 'parody', 'event', 'author'] as $type) {
                 $value = $work->{$type} ?? null;
                 if ($value !== null && $value !== '') {

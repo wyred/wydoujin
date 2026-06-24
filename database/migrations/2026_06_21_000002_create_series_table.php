@@ -13,7 +13,6 @@ return new class extends Migration {
             $table->string('name');
             $table->string('sort_name')->nullable();
             $table->boolean('is_auto')->default(true);
-            $table->unsignedBigInteger('cover_work_id')->nullable();
             $table->timestamps();
             $table->index('mangaka_id');
         });

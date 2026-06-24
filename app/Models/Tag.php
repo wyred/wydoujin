@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Parsing\ParsedName;
+use App\Support\SortKey;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -40,7 +40,7 @@ class Tag extends Model
         // Derive sort_value from value when not supplied. / 未指定ならvalueから導出。
         static::creating(function (Tag $tag): void {
             if (($tag->sort_value ?? '') === '') {
-                $tag->sort_value = ParsedName::deriveSortTitle((string) $tag->value);
+                $tag->sort_value = SortKey::derive((string) $tag->value);
             }
         });
     }

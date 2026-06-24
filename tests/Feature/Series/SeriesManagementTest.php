@@ -2,8 +2,8 @@
 
 use App\Models\Series;
 use App\Models\Work;
-use App\Parsing\ParsedName;
 use App\Series\SeriesDetectorContract;
+use App\Support\SortKey;
 use Tests\Feature\Series\SeedsMangakaWorks;
 
 uses(SeedsMangakaWorks::class);
@@ -90,7 +90,7 @@ test('rename updates name sort and locks members', function (): void {
     $this->assertFalse($series->refresh()->is_auto);
     $this->assertTrue($w->refresh()->series_locked);
 
-    $this->assertSame(ParsedName::deriveSortTitle('New Name'), $series->refresh()->sort_name);
+    $this->assertSame(SortKey::derive('New Name'), $series->refresh()->sort_name);
     detectForSeriesManagement();
     $this->assertSame('New Name', $series->refresh()->name);
     $this->assertFalse($series->refresh()->is_auto);

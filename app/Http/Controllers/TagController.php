@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tag;
-use App\Parsing\ParsedName;
+use App\Support\SortKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -41,7 +41,7 @@ final class TagController extends Controller
         }
 
         $old = $tag->value;
-        $tag->update(['value' => $value, 'sort_value' => ParsedName::deriveSortTitle($value)]);
+        $tag->update(['value' => $value, 'sort_value' => SortKey::derive($value)]);
         // Tombstone the old value so re-derivation normalizes to the renamed tag. / 旧値を別名化。
         Tag::create(['type' => $tag->type, 'value' => $old, 'merged_into_id' => $tag->id]);
 

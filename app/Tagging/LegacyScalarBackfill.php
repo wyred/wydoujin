@@ -2,7 +2,7 @@
 
 namespace App\Tagging;
 
-use App\Parsing\ParsedName;
+use App\Support\SortKey;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -47,7 +47,7 @@ final class LegacyScalarBackfill
         return (int) DB::table('tags')->insertGetId([
             'type' => $type,
             'value' => $value,
-            'sort_value' => ParsedName::deriveSortTitle($value),
+            'sort_value' => SortKey::derive($value),
             'created_at' => $now,
             'updated_at' => $now,
         ]);

@@ -5,7 +5,7 @@ namespace App\Series;
 use App\Models\Mangaka;
 use App\Models\Series;
 use App\Models\Work;
-use App\Parsing\ParsedName;
+use App\Support\SortKey;
 use Illuminate\Support\Collection;
 
 /**
@@ -40,7 +40,7 @@ final class SeriesDetector implements SeriesDetectorContract
 
                 $series = Series::firstOrCreate(
                     ['mangaka_id' => $mangaka->id, 'name' => $stem, 'is_auto' => true],
-                    ['sort_name' => ParsedName::deriveSortTitle($stem)],
+                    ['sort_name' => SortKey::derive($stem)],
                 );
                 $created += $series->wasRecentlyCreated ? 1 : 0;
 

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Series;
 use App\Models\Work;
-use App\Parsing\ParsedName;
+use App\Support\SortKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -32,7 +32,7 @@ final class SeriesManagementController extends Controller
         $series = Series::create([
             'mangaka_id' => $mangakaId,
             'name' => $name,
-            'sort_name' => ParsedName::deriveSortTitle($name),
+            'sort_name' => SortKey::derive($name),
             'is_auto' => false,
         ]);
         Work::whereIn('id', $works->pluck('id'))->update(['series_id' => $series->id, 'series_locked' => true]);
@@ -83,7 +83,7 @@ final class SeriesManagementController extends Controller
 
         $series->update([
             'name' => $name,
-            'sort_name' => ParsedName::deriveSortTitle($name),
+            'sort_name' => SortKey::derive($name),
             'is_auto' => false,
         ]);
         $series->works()->update(['series_locked' => true]);

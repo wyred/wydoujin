@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+/* Self-hosted Instrument Sans via @fontsource — the woff2 ship in the npm package and
+   are bundled by Vite at build time, so the image build needs no network (replaces the
+   laravel-vite-plugin Bunny fetch that timed out in CI). Weights 400/600/700: Instrument
+   Sans has no Light, so the design system's 300 falls back to 400 (same as before).
+   セルフホストフォント。ビルド時にバンドルし、ネットワーク取得を排除。 */
+@import '@fontsource/instrument-sans/400.css';
+@import '@fontsource/instrument-sans/600.css';
+@import '@fontsource/instrument-sans/700.css';
+
 /* Apple Design System — vendored live tokens (resources/design-system/SOURCE.md).
    Tailwind v4 inlines TOP-LEVEL @imports but DROPS the @import url(...) nested
    inside the vendored styles.css, so the token layers are imported directly here.

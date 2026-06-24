@@ -59,5 +59,6 @@ Route::post('/work/{work}/tags/detach', [WorkTagController::class, 'detach'])->n
 Route::post('/work/{work}/tags/reset', [WorkTagController::class, 'reset'])->name('work.tags.reset');
 
 Route::get('/work/{work}', [WorkController::class, 'show'])->name('work.show');
+Route::post('/work/{work}/rescan', [WorkController::class, 'rescan'])->name('work.rescan');
 
 Route::get('/work/{work}/read', [ReaderController::class, 'show'])->name('work.read');

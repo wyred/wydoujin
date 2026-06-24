@@ -58,7 +58,8 @@ the image to GHCR on push to `main` and on `v*` tags.
   `routes/console.php` (the daily scheduled scan).
 - **Browse/discovery:** `BrowseController` (`/`) · `MangakaController` (`/mangaka`, `/mangaka/{slug}` —
   the latter also hosts series **manage mode**) · `SeriesController` (`/series/{id}`) ·
-  `WorkController` (`/work/{id}`) · `BrowseSearchController` (`/browse` — live search + facets).
+  `WorkController` (`/work/{id}` detail + `POST /work/{id}/rescan` — re-derive one work) ·
+  `BrowseSearchController` (`/browse` — live search + facets).
 - **Reader/serving:** `ReaderController` (`/work/{id}/read`) · `PageController` (`/work/{id}/page/{n}`,
   streams bytes from the zip) · `CoverController` (`/covers/{hash}.webp`) · `ReadingProgressController`.
 - **Maintenance & series:** `MaintenanceController` (`/maintenance` + `/scan`) ·
@@ -72,6 +73,9 @@ the image to GHCR on push to `main` and on `v*` tags.
   `app/Jobs/ScanLibrary.php` (plans + fans out a batch) → `app/Jobs/ProcessZip.php` (one task per
   zip: inspect, upsert by `content_hash`, sync tags) → `app/Jobs/GenerateCover.php` (per-work cover
   render) → `app/Jobs/FinalizeScan.php` (batch `finally`: missing-sweep, prune, series detect, stats).
+  `app/Jobs/RescanWork.php` re-derives a single work on demand (the work page's **Rescan** button →
+  `POST /work/{id}/rescan`): refreshes page info + tags and re-renders the cover, ignoring the
+  unchanged-file fast-skip — repairs a work left without a cover/page info.
 - **UI:** Blade in `resources/views/`; Alpine components registered inline via `alpine:init`;
   reusable partials in `resources/views/components/` (`x-nav`, `x-cover`, `x-work-card`, `x-badge`,
   `x-button`, `x-section-heading`).

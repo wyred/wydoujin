@@ -46,8 +46,16 @@
                     $rp = $work->readingProgress;
                     $cta = (! $rp || $rp->current_page < 1) ? 'Read' : ($rp->is_completed ? 'Read again' : 'Continue');
                 @endphp
-                <div style="margin-top:var(--space-lg);">
+                <div class="flex items-center" style="gap:var(--space-sm); margin-top:var(--space-lg); flex-wrap:wrap;"
+                     x-data="{ busy: false, msg: '' }">
                     <x-button href="/work/{{ $work->id }}/read">▶ {{ $cta }}</x-button>
+
+                    <button type="button" :disabled="busy"
+                            @click="busy = true; msg = 'Rescanning…'; window.wyd.postJson('/work/{{ $work->id }}/rescan').then(() => { msg = 'Queued — refreshing…'; setTimeout(() => location.reload(), 1500); }).catch(() => { busy = false; msg = 'Rescan failed — try again.'; })"
+                            style="display:inline-flex; align-items:center; gap:var(--space-xs); padding:11px 22px; border-radius:var(--radius-pill); font:var(--weight-regular) 16px/1 var(--font-text); background:var(--color-pearl); color:var(--color-ink-muted-80); border:1px solid var(--color-hairline); cursor:pointer;"
+                            class="active:[transform:scale(var(--press-scale))] hover:[filter:brightness(1.03)]">↻ Rescan</button>
+
+                    <span x-show="msg" x-text="msg" style="font:var(--type-caption); color:var(--text-muted);"></span>
                 </div>
 
                 <div style="margin-top:var(--space-xl); border-top:1px solid var(--color-hairline); padding-top:var(--space-md);">

@@ -6,7 +6,6 @@ use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
 use Throwable;
-use ZipArchive;
 
 /**
  * Renders a resized webp cover from one zip entry. / zip内1エントリから縮小webp表紙を生成。
@@ -14,6 +13,7 @@ use ZipArchive;
 final class CoverGenerator
 {
     public function __construct(
+        private readonly ZipPageReader $reader,
         private readonly string $coversDir,
         private readonly int $width = 400,
         private readonly int $quality = 80,
@@ -27,16 +27,7 @@ final class CoverGenerator
      */
     public function generate(string $zipPath, string $entryName, string $contentHash): string
     {
-        $zip = new ZipArchive();
-        if ($zip->open($zipPath, ZipArchive::RDONLY) !== true) {
-            throw new ArchiveException("Cannot open zip: {$zipPath}");
-        }
-        $bytes = $zip->getFromName($entryName);
-        $zip->close();
-
-        if ($bytes === false) {
-            throw new ArchiveException("Cannot read entry {$entryName} in {$zipPath}");
-        }
+        $bytes = $this->reader->read($zipPath, $entryName);
 
         if (! is_dir($this->coversDir)) {
             mkdir($this->coversDir, 0775, true);

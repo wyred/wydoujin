@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Archive\ArchiveInspector;
 use App\Archive\CoverGenerator;
+use App\Archive\ZipPageReader;
 use App\Parsing\FilenameParser;
 use App\Parsing\NamePattern;
 use App\Scanning\LibraryScanner;
@@ -33,7 +34,8 @@ class AppServiceProvider extends ServiceProvider
             config('scan.image_extensions'),
         ));
 
-        $this->app->singleton(CoverGenerator::class, fn () => new CoverGenerator(
+        $this->app->singleton(CoverGenerator::class, fn ($app) => new CoverGenerator(
+            $app->make(ZipPageReader::class),
             config('scan.data_path').'/covers',
             config('scan.cover.width'),
             config('scan.cover.quality'),

@@ -9,31 +9,13 @@
         @if ($mangaka->isEmpty())
             <p style="font:var(--type-body); color:var(--text-muted);">No mangaka yet — run <code>wydoujin:scan</code>.</p>
         @else
-            <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--grid-gutter);">
+            <x-card-grid>
                 @foreach ($mangaka as $artist)
-                    <a href="/mangaka/{{ $artist->slug }}" class="no-underline block">
-                        <x-cover :path="$artist->rep_cover" :title="$artist->name" />
-                        <div class="truncate" style="margin-top:var(--space-xs); font:var(--type-caption-strong); color:var(--text-heading);">{{ $artist->name }}</div>
-                        <div style="font:var(--type-fine); color:var(--text-muted);">{{ $artist->works_count }} {{ \Illuminate\Support\Str::plural('work', $artist->works_count) }}</div>
-                    </a>
+                    <x-collection-card href="/mangaka/{{ $artist->slug }}" :path="$artist->rep_cover" :title="$artist->name" :count="$artist->works_count" />
                 @endforeach
-            </div>
+            </x-card-grid>
 
-            @if ($mangaka->hasPages())
-                <nav class="flex items-center justify-center" style="gap:var(--space-md); margin-top:var(--space-xl);">
-                    @if ($mangaka->onFirstPage())
-                        <span style="font:var(--type-caption); color:var(--text-muted);">Prev</span>
-                    @else
-                        <a href="{{ $mangaka->previousPageUrl() }}" class="no-underline" style="font:var(--type-caption); color:var(--text-link);">Prev</a>
-                    @endif
-                    <span style="font:var(--type-caption); color:var(--text-muted);">Page {{ $mangaka->currentPage() }} of {{ $mangaka->lastPage() }}</span>
-                    @if ($mangaka->hasMorePages())
-                        <a href="{{ $mangaka->nextPageUrl() }}" class="no-underline" style="font:var(--type-caption); color:var(--text-link);">Next</a>
-                    @else
-                        <span style="font:var(--type-caption); color:var(--text-muted);">Next</span>
-                    @endif
-                </nav>
-            @endif
+            <x-pagination :paginator="$mangaka" />
         @endif
     </main>
 @endsection

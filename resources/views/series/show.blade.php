@@ -26,11 +26,11 @@
             </div>
         </div>
 
-        <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--grid-gutter);">
+        <x-card-grid>
             @foreach ($works as $work)
                 <x-work-card :work="$work" />
             @endforeach
-        </div>
+        </x-card-grid>
     </main>
 
     <script>

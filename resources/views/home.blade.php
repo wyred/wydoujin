@@ -16,21 +16,21 @@
             @if ($continueReading->isNotEmpty())
                 <section style="margin-bottom:var(--space-xxl);">
                     <x-section-heading>Continue Reading</x-section-heading>
-                    <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--grid-gutter);">
+                    <x-card-grid>
                         @foreach ($continueReading as $work)
                             <x-work-card :work="$work" />
                         @endforeach
-                    </div>
+                    </x-card-grid>
                 </section>
             @endif
 
             <section>
                 <x-section-heading>Recently Added</x-section-heading>
-                <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--grid-gutter);">
+                <x-card-grid>
                     @foreach ($recentlyAdded as $work)
                         <x-work-card :work="$work" />
                     @endforeach
-                </div>
+                </x-card-grid>
             </section>
         @endif
     </main>

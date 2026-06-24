@@ -69,10 +69,15 @@ final class WorkTagSync
     /** Delete canonical tags with no works that aren't a merge target. / 孤立タグ削除。 */
     public function pruneOrphans(): int
     {
-        return Tag::query()
+        // Two-step (select ids, then delete by id). MySQL rejects a DELETE that references the
+        // deleted table in a subquery (error 1093) — the aliases check does exactly that. SQLite
+        // allows it, but this keeps it portable. / MySQLの1093回避のため2段階で削除。
+        $ids = Tag::query()
             ->whereNull('merged_into_id')
             ->whereDoesntHave('works')
             ->whereDoesntHave('aliases')
-            ->delete();
+            ->pluck('id');
+
+        return $ids->isEmpty() ? 0 : Tag::whereKey($ids)->delete();
     }
 }

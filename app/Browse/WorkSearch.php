@@ -99,10 +99,14 @@ final class WorkSearch
             ->paginate($perPage, ['*'], 'page', max(1, $page));
     }
 
-    /** Work ids under base + the OTHER facets (excluding $except's own selection). / 基底＋他次元の作品ID。 */
-    private function matchingWorkIds(?string $except): array
+    /**
+     * Works matching base + the OTHER facets (excluding $except's own selection),
+     * as an id subquery so the DB never ships the whole id list to PHP and back.
+     * 基底＋他次元に一致するidの副問合せ（PHPへid列を取り出さない）。
+     */
+    private function matchingWorksQuery(?string $except): Builder
     {
-        return $this->applyFacets($this->base(), except: $except)->pluck('id')->all();
+        return $this->applyFacets($this->base(), except: $except)->select('id');
     }
 
     /**
@@ -116,7 +120,7 @@ final class WorkSearch
         foreach (self::DIMENSIONS as $dim) {
             $counts = DB::table('work_tag')
                 ->join('tags', 'tags.id', '=', 'work_tag.tag_id')
-                ->whereIn('work_tag.work_id', $this->matchingWorkIds($dim))
+                ->whereIn('work_tag.work_id', $this->matchingWorksQuery($dim))
                 ->where('tags.type', $dim)
                 ->whereNull('tags.merged_into_id')
                 ->groupBy('tags.value')

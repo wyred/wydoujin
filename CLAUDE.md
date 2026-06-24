@@ -68,7 +68,9 @@ the image to GHCR on push to `main` and on `v*` tags.
 - **Backend services:** `app/Parsing/` (parser + pattern classes) · `app/Archive/` (zip inspection,
   page reader, cover gen) · `app/Scanning/LibraryScanner.php` · `app/Series/` (`SeriesDetector`,
   `TitleNormalizer`) · `app/Tagging/` (`WorkTagSync` — derive/sync tags, resolve aliases, prune
-  orphans; `LegacyScalarBackfill`) · `app/Jobs/ScanLibrary.php`.
+  orphans; `LegacyScalarBackfill`) · `app/Jobs/ScanLibrary.php` (the scan) ·
+  `app/Jobs/GenerateCover.php` (per-work cover render, dispatched by the scanner so cover
+  decoding never blocks the scan — keeps huge libraries from timing out).
 - **UI:** Blade in `resources/views/`; Alpine components registered inline via `alpine:init`;
   reusable partials in `resources/views/components/` (`x-nav`, `x-cover`, `x-work-card`, `x-badge`,
   `x-button`, `x-section-heading`).
@@ -97,10 +99,12 @@ the image to GHCR on push to `main` and on `v*` tags.
   **s6-overlay**. Worker count = env **`QUEUE_WORKERS`** (default 1, range 1–4; the image bakes
   4 s6 worker slots — `worker`, `worker2`..`worker4` — and idle ones `sleep`). Volumes:
   `/library` (read-only), `/data` (writable: the cover cache `/data/covers` + FrankenPHP/Caddy state via `XDG_DATA_HOME`; Laravel's `storage/` stays at `/app/storage`).
-- **Scanning & cover generation are queued jobs**, processed by the `QUEUE_WORKERS` queue
+- **Scanning & cover generation are separate queued jobs**, processed by the `QUEUE_WORKERS` queue
   worker(s) (default 1; the database queue's row locking keeps each job on a single worker, so
-  added workers never double-process). Covers are generated with Intervention Image → `webp`
-  under `/data/covers/`.
+  added workers never double-process). The `ScanLibrary` scan walks the library and, for each
+  newly-added work, dispatches a `GenerateCover` job another worker picks up — so the scan stays
+  fast and a single bad image never fails the scan (the cover job logs and leaves `cover_path`
+  null). Covers are generated with Intervention Image → `webp` under `/data/covers/`.
 
 ### Data model (7 tables)
 `mangaka` (one per top folder) · `series` (per-mangaka grouping) · `works` (one per `.zip`;

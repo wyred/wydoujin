@@ -4,7 +4,7 @@ namespace App\Scanning;
 
 use App\Archive\ArchiveException;
 use App\Archive\ArchiveInspector;
-use App\Archive\CoverGenerator;
+use App\Jobs\GenerateCover;
 use App\Models\Mangaka;
 use App\Models\Work;
 use App\Parsing\FilenameParser;
@@ -20,7 +20,6 @@ final class LibraryScanner implements ScannerContract
 {
     public function __construct(
         private readonly ArchiveInspector $inspector,
-        private readonly CoverGenerator $covers,
         private readonly FilenameParser $parser,
         private readonly WorkTagSync $tags,
         private readonly string $libraryPath,
@@ -130,13 +129,18 @@ final class LibraryScanner implements ScannerContract
             return;
         }
 
+        // Cover starts null; generating it (decode + resize) is the slow part, so it's
+        // offloaded to a queued GenerateCover job that another worker handles — this keeps
+        // the scan fast on huge libraries. / 表紙生成は別ジョブに委譲（巨大ライブラリでも高速）。
         $attributes['content_hash'] = $inspection->contentHash;
-        $attributes['cover_path'] = $inspection->imageEntries === []
-            ? null
-            : $this->covers->generate($zipPath, $inspection->imageEntries[0], $inspection->contentHash);
 
         $work = Work::create($attributes);
         $this->tags->sync($work, $parsed); // sync metadata tags / メタデータタグを同期
+
+        if ($inspection->imageEntries !== []) {
+            GenerateCover::dispatch($work->id);
+        }
+
         $stats['added']++;
     }
 }

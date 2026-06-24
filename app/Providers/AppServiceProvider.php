@@ -53,7 +53,6 @@ class AppServiceProvider extends ServiceProvider
         // スキャナ/検出器はスキャン毎の状態を持つため毎回生成（シングルトンにしない）。
         $this->app->bind(LibraryScanner::class, fn ($app) => new LibraryScanner(
             $app->make(ArchiveInspector::class),
-            $app->make(CoverGenerator::class),
             $app->make(FilenameParser::class),
             $app->make(WorkTagSync::class),
             config('scan.library_path'),

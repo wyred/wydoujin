@@ -53,6 +53,7 @@ Key environment variables (set in `.env`):
 | `APP_PASSWORD` | Single-user gate. **Unset → the app is open**; set → one password guards everything except `/health` and `/login`. |
 | `LIBRARY_PATH` | Host path to your `<mangaka>/<doujin>.zip` library (mounted read-only). |
 | `DATA_PATH` | Writable data root (cached covers + Laravel storage). |
+| `QUEUE_WORKERS` | Number of in-container background workers (library scans + cover generation). Default `1`, range `1`–`4`. |
 | `DB_PASSWORD` | **Required** — `docker compose up` fails fast if unset (no insecure default). |
 | `DB_ROOT_PASSWORD` | Required when using the bundled MySQL service. |
 
@@ -62,3 +63,70 @@ To use your own MySQL server instead of the bundled one: remove the `mysql` serv
 `docker-compose.yml` **and** the `app` service's `depends_on: mysql` entry, then point
 `DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD` at your server. Both edits are required —
 leaving `depends_on` while the `mysql` service is absent makes `docker compose up` fail.
+
+## Homelab deployment (SMB library + worker scaling)
+
+A ready-to-edit [`docker-compose.example.yml`](docker-compose.example.yml) is included. It pulls the
+prebuilt image from GHCR (`ghcr.io/wyred/wydoujin`) and mounts your library from an SMB/CIFS share:
+
+```bash
+cp docker-compose.example.yml docker-compose.yml
+docker compose run --rm app php artisan key:generate --show   # → paste into .env as APP_KEY
+docker compose up -d
+docker compose exec app php artisan migrate --force           # first run only
+# open http://<host>:8080  (front it with a reverse proxy for TLS)
+```
+
+Example `.env` (next to the compose file):
+
+```dotenv
+APP_KEY=base64:...                  # from `key:generate --show`
+APP_URL=https://manga.example.lan   # external URL when behind a reverse proxy
+APP_PASSWORD=changeme               # single-user gate (omit to leave the app open)
+
+# Manga library over SMB — the share + subfolder holding <mangaka>/*.zip
+SMB_HOST=192.168.1.10
+SMB_PATH=media/manga
+SMB_USER=reader
+SMB_PASS=secret
+
+# Database (bundled MySQL service)
+DB_PASSWORD=app-db-password
+DB_ROOT_PASSWORD=root-db-password
+
+# Background workers (scans + cover generation): default 1, range 1–4
+QUEUE_WORKERS=2
+```
+
+### Manga library on an SMB share
+
+The example defines a Docker **CIFS volume**, so Compose mounts the share for you — no host `fstab`
+required. Point `SMB_PATH` at the **share + subfolder** that holds your `<mangaka>/*.zip`
+(e.g. `media/manga`); CIFS mounts that subdirectory directly. The mount is read-only, and
+`iocharset=utf8` preserves Japanese filenames. If your NAS needs a different SMB protocol, edit
+`vers=3.1.1` in the volume's `driver_opts` (try `3.0` or `2.1` on older servers).
+
+Prefer to mount SMB on the host yourself (e.g. via `/etc/fstab`)? Delete the `manga:` volume from
+the example and bind-mount the subfolder instead:
+
+```yaml
+    volumes:
+      - /mnt/nas/manga:/library:ro
+```
+
+### Adjusting the number of queue workers
+
+Background jobs — library scans and cover generation — run on queue workers **inside the single
+container**. Set **`QUEUE_WORKERS`** (default `1`, max `4`) and re-apply:
+
+```bash
+# .env
+QUEUE_WORKERS=3
+
+docker compose up -d        # recreates the container with 3 workers
+```
+
+s6 then supervises that many `queue:work` processes (the image bakes 4 worker slots; unused ones stay
+idle). Jobs use the database queue with row locking, so workers never double-process a job. **One
+worker is plenty for everyday use** — raise it mainly to speed up the first cover-generation pass over
+a large library. (To go beyond 4, add more `worker*` slots under `docker/s6/s6-rc.d/` and rebuild.)

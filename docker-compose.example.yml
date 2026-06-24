@@ -1,0 +1,105 @@
+# ==============================================================================
+# wydoujin — example docker-compose for a homelab deployment
+# ==============================================================================
+# A reference you can copy to `docker-compose.yml`. It pulls the prebuilt image
+# from GHCR (no local build) and mounts your manga library from an SMB/CIFS share.
+#
+# Quick start:
+#   1. cp docker-compose.example.yml docker-compose.yml
+#   2. Create a `.env` beside it (see the variables referenced below).
+#   3. Generate an app key and paste it into .env as APP_KEY=base64:...
+#        docker compose run --rm app php artisan key:generate --show
+#   4. docker compose up -d
+#   5. docker compose exec app php artisan migrate --force      # first run only
+#   6. Open http://<host>:8080  (put a reverse proxy in front for TLS).
+#
+# The single `app` image runs the web server, the scheduler, and the queue
+# worker(s) together under s6-overlay — see QUEUE_WORKERS below to scale workers.
+# ==============================================================================
+
+services:
+  app:
+    # Pin a release tag (e.g. :v1.2.0) for reproducible upgrades; :main is rolling.
+    image: ghcr.io/wyred/wydoujin:main
+    restart: unless-stopped
+    ports:
+      - "8080:8080"                 # host:container — front this with a reverse proxy for HTTPS
+    environment:
+      # ---- Core ----------------------------------------------------------------
+      APP_KEY: "${APP_KEY:?run 'php artisan key:generate --show' and put it in .env}"
+      APP_URL: "${APP_URL:-http://localhost:8080}"   # your external URL when behind a reverse proxy
+      APP_PASSWORD: ${APP_PASSWORD:-}              # single-user gate: unset = open, set = password required
+
+      # ---- Queue workers -------------------------------------------------------
+      # How many background workers run inside the container (library scans +
+      # cover generation). Default 1; valid range 1..4 (the image bakes 4 slots).
+      # Bump this to speed up the first cover-generation pass on a big library,
+      # then re-run `docker compose up -d`. Jobs use the DB queue with row locking,
+      # so multiple workers never double-process a job.
+      QUEUE_WORKERS: ${QUEUE_WORKERS:-1}
+
+      # ---- Database (bundled `mysql` service below, or point at your own) -------
+      DB_CONNECTION: ${DB_CONNECTION:-mysql}
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE:-wydoujin}
+      DB_USERNAME: ${DB_USERNAME:-wydoujin}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      # Your library, READ-ONLY at /library, laid out as <mangaka>/<doujin>.zip.
+      # `manga` is the SMB/CIFS volume defined at the bottom of this file.
+      - manga:/library:ro
+      #
+      # --- Alternative: bind-mount instead of the CIFS volume ------------------
+      # If you already mount the SMB share on the HOST (e.g. via /etc/fstab),
+      # delete the line above AND the whole `manga:` volume below, then use the
+      # host path to the subfolder that holds <mangaka>/*.zip:
+      #   - /mnt/nas/manga:/library:ro
+      #
+      # Writable data: cached covers + Laravel storage. A named volume keeps
+      # permissions simple; for easy host backups use a bind mount instead, e.g.
+      #   - ${DATA_PATH:-./data}:/data
+      - wydoujin_data:/data
+    depends_on:
+      - mysql
+    # s6 drops the app processes to www-data via SETUID/SETGID, so we can't drop
+    # all caps — but we can still block privilege escalation.
+    security_opt:
+      - no-new-privileges:true
+
+  # --- Optional bundled MySQL ---------------------------------------------------
+  # To use your OWN MySQL server instead: delete this entire service AND the
+  # `depends_on: mysql` above, then point DB_HOST/DB_PORT/... at your server.
+  mysql:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-wydoujin}
+      MYSQL_USER: ${DB_USERNAME:-wydoujin}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+    volumes:
+      - wydoujin_db:/var/lib/mysql
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  # ----------------------------------------------------------------------------
+  # Manga library over SMB/CIFS. Docker mounts the share for you (no host fstab
+  # required). `device` is the SHARE + SUBFOLDER that contains <mangaka>/*.zip —
+  # CIFS mounts a subdirectory directly, e.g. //192.168.1.10/media/manga.
+  #   - uid/gid 33  = www-data inside the image (so the app can read the files)
+  #   - iocharset=utf8 keeps Japanese filenames intact (important for doujin)
+  #   - ro + *_mode  = read-only
+  #   - vers=        = SMB protocol; try 3.1.1, fall back to 3.0 / 2.1 on older NAS
+  # Set SMB_HOST, SMB_PATH, SMB_USER, SMB_PASS in .env.
+  # ----------------------------------------------------------------------------
+  manga:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//${SMB_HOST:?set SMB_HOST in .env}/${SMB_PATH:?set SMB_PATH in .env, e.g. media/manga}"
+      o: "username=${SMB_USER},password=${SMB_PASS},uid=33,gid=33,ro,vers=3.1.1,iocharset=utf8,file_mode=0440,dir_mode=0550"
+
+  wydoujin_data:   # cached covers + Laravel storage
+  wydoujin_db:     # bundled MySQL data (remove if using external MySQL)

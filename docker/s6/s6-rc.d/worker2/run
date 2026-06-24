@@ -1,0 +1,8 @@
+#!/command/with-contenv sh
+# Extra queue worker — slot 2 of 4. Runs a queue:work only when QUEUE_WORKERS >= 2
+# (default 1); otherwise idles so s6 keeps supervising it without restart-thrashing.
+# Slot 1 is the always-on `worker` service. / 余剰ワーカー(slot2)。QUEUE_WORKERS>=2で起動、未満は待機。
+if [ "${QUEUE_WORKERS:-1}" -ge 2 ] 2>/dev/null; then
+    exec s6-setuidgid www-data php /app/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+fi
+exec sleep infinity

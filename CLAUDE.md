@@ -92,12 +92,15 @@ the image to GHCR on push to `main` and on `v*` tags.
 - **Stack:** Laravel 13 (PHP 8.3+) · Blade + Tailwind CSS · **Alpine.js as the only JS library**
   (no SPA framework, no jQuery) · Vite · FrankenPHP · Docker · GitHub Actions · **Pest 4** for tests
   (unit/feature + a Playwright browser suite).
-- **Single-image monolith:** one Docker image runs three processes under **s6-overlay** — `web`
-  (FrankenPHP, no separate nginx), one `queue worker` (scan + cover-gen jobs), and the
-  `scheduler` (periodic scan). Volumes: `/library` (read-only), `/data` (writable: cached
-  covers + Laravel storage).
-- **Scanning & cover generation are queued jobs**, processed sequentially by the one worker.
-  Covers are generated with Intervention Image → `webp` under `/data/covers/`.
+- **Single-image monolith:** one Docker image runs `web` (FrankenPHP, no separate nginx), the
+  `scheduler` (periodic scan), and one or more `queue worker`s (scan + cover-gen jobs) under
+  **s6-overlay**. Worker count = env **`QUEUE_WORKERS`** (default 1, range 1–4; the image bakes
+  4 s6 worker slots — `worker`, `worker2`..`worker4` — and idle ones `sleep`). Volumes:
+  `/library` (read-only), `/data` (writable: cached covers + Laravel storage).
+- **Scanning & cover generation are queued jobs**, processed by the `QUEUE_WORKERS` queue
+  worker(s) (default 1; the database queue's row locking keeps each job on a single worker, so
+  added workers never double-process). Covers are generated with Intervention Image → `webp`
+  under `/data/covers/`.
 
 ### Data model (7 tables)
 `mangaka` (one per top folder) · `series` (per-mangaka grouping) · `works` (one per `.zip`;

@@ -1,71 +1,64 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# wydoujin
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A self-hosted, **single-user** reading server for a doujin/manga library (Kavita-like). Files live
+on disk as `/library/<mangaka>/<doujin>.zip`. wydoujin scans them into a database, parses metadata
+from filenames into normalized tags, groups works into series, and serves a web reader — pages stream
+straight from the zip; only resized covers are cached.
 
-## About Laravel
+**Stack:** Laravel 13 (PHP 8.3+) · Blade + Tailwind CSS · Alpine.js · Vite · FrankenPHP · single
+Docker image (web + queue worker + scheduler under s6-overlay) · MySQL in production, SQLite for
+local dev and tests.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> See [`CLAUDE.md`](CLAUDE.md) for architecture, invariants, and where things live.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Local development
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+> **Toolchain quirk on this dev machine:** the default `php` is broken — prefix `php`/`artisan`/
+> `composer` commands with `PATH="/opt/homebrew/opt/php/bin:$PATH"` (PHP 8.5). Node/npm are on the
+> normal PATH. Inside Docker, `php` is fine.
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install && npm install
+cp .env.example .env && php artisan key:generate
+touch database/database.sqlite && php artisan migrate   # local dev uses a SQLite file
+npm run build            # or: npm run dev  (Vite HMR)
+php artisan serve        # plus: php artisan queue:work   (scan + cover-gen jobs)
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Tests
 
-## Contributing
+```bash
+php artisan test                                   # full suite (Pest 4, in-memory SQLite)
+vendor/bin/pest --filter=health                    # a single test / group
+php -d pcov.enabled=1 vendor/bin/pest --coverage   # coverage (PCOV is loaded but OFF by default)
+vendor/bin/pest tests/Browser                      # Playwright browser suite (explicit; not in CI)
+npm install && npx playwright install chromium     # one-time prereq for the browser suite
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+CI (`.github/workflows/ci.yml`) runs `php artisan test` on in-memory SQLite. `build.yml` pushes the
+Docker image to GHCR on push to `main` and on `v*` tags.
 
-## Code of Conduct
+## Running with Docker
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+docker compose up -d
+docker compose exec app php artisan migrate --force
+```
 
-## Security Vulnerabilities
+Key environment variables (set in `.env`):
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-## Running
-
-1. Copy `.env.example` to `.env` and run `php artisan key:generate` (or set `APP_KEY`).
-2. Set `LIBRARY_PATH` to your `<mangaka>/<doujin>.zip` library.
-3. `docker compose up -d`.
-4. Run migrations: `docker compose exec app php artisan migrate --force`.
-
-**Production note:** The default passwords (`secret` / `rootsecret`) are for local dev only. In production, set strong values for `DB_PASSWORD` (and `DB_ROOT_PASSWORD` if using the bundled MySQL) in your `.env`.
+| Variable | Purpose |
+| --- | --- |
+| `APP_KEY` | Laravel app key (`php artisan key:generate`). |
+| `APP_PASSWORD` | Single-user gate. **Unset → the app is open**; set → one password guards everything except `/health` and `/login`. |
+| `LIBRARY_PATH` | Host path to your `<mangaka>/<doujin>.zip` library (mounted read-only). |
+| `DATA_PATH` | Writable data root (cached covers + Laravel storage). |
+| `DB_PASSWORD` | **Required** — `docker compose up` fails fast if unset (no insecure default). |
+| `DB_ROOT_PASSWORD` | Required when using the bundled MySQL service. |
 
 ### External MySQL
-Remove the `mysql` service from `docker-compose.yml` **and** the `depends_on: mysql` entry from the `app` service, then set
-`DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD` to your server. Both changes are required — leaving `depends_on` in place while the `mysql` service is absent will cause `docker compose up` to fail.
+
+To use your own MySQL server instead of the bundled one: remove the `mysql` service from
+`docker-compose.yml` **and** the `app` service's `depends_on: mysql` entry, then point
+`DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD` at your server. Both edits are required —
+leaving `depends_on` while the `mysql` service is absent makes `docker compose up` fail.

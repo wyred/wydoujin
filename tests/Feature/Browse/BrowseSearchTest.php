@@ -28,6 +28,15 @@ test('browse renders grid and nav link', function (): void {
         ->assertSee('No works match');         // empty-state element present in DOM (Alpine-hidden)
 });
 
+test('browse wires up infinite-scroll auto-load', function (): void {
+    workForBrowseSearch(['title' => 'Scrolly', 'sort_title' => 'a']);
+
+    $this->get('/browse')->assertOk()
+        ->assertSee('x-ref="sentinel"', false)        // the observed sentinel
+        ->assertSee('IntersectionObserver', false)    // the auto-load wiring
+        ->assertSee('Load more');                     // manual fallback still present
+});
+
 test('q filters server rendered results', function (): void {
     workForBrowseSearch(['title' => 'Alpha Doujin', 'sort_title' => 'a']);
     workForBrowseSearch(['title' => 'Beta Manga', 'sort_title' => 'b']);

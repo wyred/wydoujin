@@ -86,6 +86,9 @@
             </div>
 
             <div style="text-align:center; margin-top:var(--space-xl);">
+                {{-- Auto-load sentinel: the IntersectionObserver in init() triggers loadMore()
+                     when this scrolls near the viewport. The button stays as a manual fallback. --}}
+                <div x-ref="sentinel" aria-hidden="true" style="height:1px;"></div>
                 <button type="button" x-show="hasMore" @click="loadMore()" :disabled="loading"
                         style="padding:9px 22px; border:1px solid var(--color-hairline); border-radius:var(--radius-pill); background:var(--surface-page); color:var(--text-body); font:var(--type-caption); cursor:pointer;"
                         x-text="loading ? 'Loading…' : 'Load more'"></button>
@@ -111,12 +114,27 @@
             cap: 15,
             _debounce: null,
             _reqId: 0,
+            _io: null,
 
             init() {
                 this.$watch('q', () => {
                     clearTimeout(this._debounce);
                     this._debounce = setTimeout(() => this.refresh(), 250);
                 });
+
+                // Infinite scroll: auto-load the next page as the sentinel nears the viewport.
+                // The 400px rootMargin prefetches before the user reaches the exact bottom; the
+                // "Load more" button stays as a manual/no-JS fallback. / 無限スクロール。
+                if ('IntersectionObserver' in window) {
+                    this._io = new IntersectionObserver((entries) => {
+                        if (entries[0].isIntersecting && this.hasMore && ! this.loading) this.loadMore();
+                    }, { rootMargin: '400px 0px' });
+                    this.$nextTick(() => this.$refs.sentinel && this._io.observe(this.$refs.sentinel));
+                }
+            },
+
+            destroy() {
+                this._io?.disconnect();
             },
 
             dims() { return this.groups.map((g) => g.key); },

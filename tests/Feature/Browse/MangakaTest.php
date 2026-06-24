@@ -22,6 +22,19 @@ test('index empty state', function (): void {
     $this->get('/mangaka')->assertOk()->assertSee('No mangaka');
 });
 
+test('index shows numbered pagination with jump links', function (): void {
+    // 24 per page → 50 mangaka spans 3 pages. / 1ページ24件。
+    foreach (range(1, 50) as $i) {
+        Mangaka::factory()->create(['name' => sprintf('Artist %02d', $i)]);
+    }
+
+    $this->get('/mangaka?page=2')->assertOk()
+        ->assertSee('aria-current="page"', false)   // current page marker
+        ->assertSee('href="http://localhost/mangaka?page=1"', false)  // jump back
+        ->assertSee('href="http://localhost/mangaka?page=3"', false)  // jump forward
+        ->assertDontSee('Page 2 of');                // old text is gone
+});
+
 test('show separates series and standalone works', function (): void {
     $m = Mangaka::factory()->create(['name' => 'CircleA']);
     $series = Series::factory()->for($m)->create(['name' => 'MyShelf']);

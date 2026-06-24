@@ -16,6 +16,9 @@ class Work extends Model
     /** Relations every work-card needs (avoids N+1). / workカード描画に必要な関連。 */
     public const CARD_RELATIONS = ['readingProgress', 'tags'];
 
+    // Intentionally unguarded. The mass-assignment trust boundary is the controllers,
+    // which only ever pass hardcoded, validated arrays (never $request->all()); locked by
+    // a regression test (WorkTagControllerTest). / 一括代入の信頼境界はコントローラ（テストで固定）。
     protected $guarded = [];
 
     protected $casts = [

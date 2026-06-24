@@ -24,4 +24,13 @@ class Series extends Model
     {
         return $this->hasMany(Work::class);
     }
+
+    /** Delete a mangaka's auto series that now have no works. / 空の自動シリーズを削除。 */
+    public static function pruneEmptyAuto(int $mangakaId): int
+    {
+        return self::where('mangaka_id', $mangakaId)
+            ->where('is_auto', true)
+            ->whereDoesntHave('works')
+            ->delete();
+    }
 }

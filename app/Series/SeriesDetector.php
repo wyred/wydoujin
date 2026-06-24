@@ -7,6 +7,7 @@ use App\Models\Series;
 use App\Models\Work;
 use App\Support\SortKey;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Per-mangaka auto series detection (spec §8). Groups works by normalized title
@@ -24,46 +25,63 @@ final class SeriesDetector implements SeriesDetectorContract
         $created = 0;
         $grouped = 0;
 
+        // One transaction per mangaka — keeps locks short while making each folder's
+        // group/clear/prune atomic. / マンガ家単位のトランザクション。
         foreach (Mangaka::all() as $mangaka) {
-            // Filter only locked works — NOT is_missing. Missing works (§7: never deleted, progress kept) stay
-            // grouped so a transiently-missing volume doesn't fragment its series. / 欠落作品も故意にシリーズ維持。
-            $works = Work::where('mangaka_id', $mangaka->id)
-                ->where('series_locked', false)
-                ->orderBy('id')
-                ->get(['id', 'title']);
-
-            $groupedIds = [];
-            foreach ($this->cluster($works) as $stem => $workIds) {
-                if (count($workIds) < 2) {
-                    continue; // singletons stay standalone / 単独作品はシリーズ化しない
-                }
-
-                $series = Series::firstOrCreate(
-                    ['mangaka_id' => $mangaka->id, 'name' => $stem, 'is_auto' => true],
-                    ['sort_name' => SortKey::derive($stem)],
-                );
-                $created += $series->wasRecentlyCreated ? 1 : 0;
-
-                Work::whereIn('id', $workIds)->update(['series_id' => $series->id]);
-                $grouped += count($workIds);
-                $groupedIds = array_merge($groupedIds, $workIds);
-            }
-
-            // Non-locked works that no longer cluster: drop stale links. / 単独化した作品のリンク解除。
-            Work::where('mangaka_id', $mangaka->id)
-                ->where('series_locked', false)
-                ->whereNotIn('id', $groupedIds ?: [0])
-                ->whereNotNull('series_id')
-                ->update(['series_id' => null]);
-
-            // Delete auto series emptied by this run; manual series are preserved. / 空の自動シリーズ削除。
-            Series::where('mangaka_id', $mangaka->id)
-                ->where('is_auto', true)
-                ->whereDoesntHave('works')
-                ->delete();
+            ['created' => $c, 'grouped' => $g] = DB::transaction(fn (): array => $this->detectForMangaka($mangaka));
+            $created += $c;
+            $grouped += $g;
         }
 
         return ['series_created' => $created, 'works_grouped' => $grouped];
+    }
+
+    /**
+     * Group one mangaka's works; returns this folder's created/grouped counts.
+     * 1マンガ家分のグルーピング。作成数・グループ化数を返す。
+     *
+     * @return array{created:int,grouped:int}
+     */
+    private function detectForMangaka(Mangaka $mangaka): array
+    {
+        $created = 0;
+        $grouped = 0;
+
+        // Filter only locked works — NOT is_missing. Missing works (§7: never deleted, progress kept) stay
+        // grouped so a transiently-missing volume doesn't fragment its series. / 欠落作品も故意にシリーズ維持。
+        $works = Work::where('mangaka_id', $mangaka->id)
+            ->where('series_locked', false)
+            ->orderBy('id')
+            ->get(['id', 'title']);
+
+        $groupedIds = [];
+        foreach ($this->cluster($works) as $stem => $workIds) {
+            if (count($workIds) < 2) {
+                continue; // singletons stay standalone / 単独作品はシリーズ化しない
+            }
+
+            $series = Series::firstOrCreate(
+                ['mangaka_id' => $mangaka->id, 'name' => $stem, 'is_auto' => true],
+                ['sort_name' => SortKey::derive($stem)],
+            );
+            $created += $series->wasRecentlyCreated ? 1 : 0;
+
+            Work::whereIn('id', $workIds)->update(['series_id' => $series->id]);
+            $grouped += count($workIds);
+            $groupedIds = array_merge($groupedIds, $workIds);
+        }
+
+        // Non-locked works that no longer cluster: drop stale links. / 単独化した作品のリンク解除。
+        Work::where('mangaka_id', $mangaka->id)
+            ->where('series_locked', false)
+            ->whereNotIn('id', $groupedIds ?: [0])
+            ->whereNotNull('series_id')
+            ->update(['series_id' => null]);
+
+        // Delete auto series emptied by this run; manual series are preserved. / 空の自動シリーズ削除。
+        Series::pruneEmptyAuto($mangaka->id);
+
+        return ['created' => $created, 'grouped' => $grouped];
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Models\Work;
 use App\Support\SortKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Manual series management — group / add / ungroup / rename (F3c). / 手動シリーズ管理。
@@ -29,14 +30,18 @@ final class SeriesManagementController extends Controller
         $works = $this->sameMangakaWorks($data['work_ids']);
         $mangakaId = (int) $works->first()->mangaka_id;
 
-        $series = Series::create([
-            'mangaka_id' => $mangakaId,
-            'name' => $name,
-            'sort_name' => SortKey::derive($name),
-            'is_auto' => false,
-        ]);
-        Work::whereIn('id', $works->pluck('id'))->update(['series_id' => $series->id, 'series_locked' => true]);
-        $this->cleanEmptyAutoSeries($mangakaId);
+        $series = DB::transaction(function () use ($name, $mangakaId, $works): Series {
+            $series = Series::create([
+                'mangaka_id' => $mangakaId,
+                'name' => $name,
+                'sort_name' => SortKey::derive($name),
+                'is_auto' => false,
+            ]);
+            Work::whereIn('id', $works->pluck('id'))->update(['series_id' => $series->id, 'series_locked' => true]);
+            Series::pruneEmptyAuto($mangakaId);
+
+            return $series;
+        });
 
         return response()->json(['series_id' => $series->id], 201);
     }
@@ -51,9 +56,11 @@ final class SeriesManagementController extends Controller
         $works = $this->sameMangakaWorks($data['work_ids']);
         abort_if((int) $works->first()->mangaka_id !== (int) $series->mangaka_id, 422, 'Series belongs to another mangaka.');
 
-        $series->update(['is_auto' => false]);
-        Work::whereIn('id', $works->pluck('id'))->update(['series_id' => $series->id, 'series_locked' => true]);
-        $this->cleanEmptyAutoSeries((int) $series->mangaka_id);
+        DB::transaction(function () use ($series, $works): void {
+            $series->update(['is_auto' => false]);
+            Work::whereIn('id', $works->pluck('id'))->update(['series_id' => $series->id, 'series_locked' => true]);
+            Series::pruneEmptyAuto((int) $series->mangaka_id);
+        });
 
         return response()->json(['ok' => true]);
     }
@@ -68,8 +75,10 @@ final class SeriesManagementController extends Controller
         $works = $this->sameMangakaWorks($data['work_ids']);
         $mangakaId = (int) $works->first()->mangaka_id;
 
-        Work::whereIn('id', $works->pluck('id'))->update(['series_id' => null, 'series_locked' => true]);
-        $this->cleanEmptyAutoSeries($mangakaId);
+        DB::transaction(function () use ($works, $mangakaId): void {
+            Work::whereIn('id', $works->pluck('id'))->update(['series_id' => null, 'series_locked' => true]);
+            Series::pruneEmptyAuto($mangakaId);
+        });
 
         return response()->json(['ok' => true]);
     }
@@ -81,12 +90,14 @@ final class SeriesManagementController extends Controller
         $name = trim($data['name']);
         abort_if($name === '', 422, 'Name is required.');
 
-        $series->update([
-            'name' => $name,
-            'sort_name' => SortKey::derive($name),
-            'is_auto' => false,
-        ]);
-        $series->works()->update(['series_locked' => true]);
+        DB::transaction(function () use ($series, $name): void {
+            $series->update([
+                'name' => $name,
+                'sort_name' => SortKey::derive($name),
+                'is_auto' => false,
+            ]);
+            $series->works()->update(['series_locked' => true]);
+        });
 
         return response()->json(['ok' => true]);
     }
@@ -104,14 +115,5 @@ final class SeriesManagementController extends Controller
         abort_if($works->pluck('mangaka_id')->unique()->count() !== 1, 422, 'Works span multiple mangaka.');
 
         return $works;
-    }
-
-    /** Delete now-empty auto series (mirrors the detector's self-cleaning). / 空の自動シリーズを削除。 */
-    private function cleanEmptyAutoSeries(int $mangakaId): void
-    {
-        Series::where('mangaka_id', $mangakaId)
-            ->where('is_auto', true)
-            ->whereDoesntHave('works')
-            ->delete();
     }
 }

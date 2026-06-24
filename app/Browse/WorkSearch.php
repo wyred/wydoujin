@@ -2,6 +2,7 @@
 
 namespace App\Browse;
 
+use App\Models\Tag;
 use App\Models\Work;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,7 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class WorkSearch
 {
-    public const DIMENSIONS = ['circle', 'parody', 'event', 'author', 'flag', 'theme'];
+    /** Facet dimensions = the tag types; single source. / ファセット次元はタグ型と同一。 */
+    public const DIMENSIONS = Tag::TYPES;
 
     /**
      * @param string[] $circle
@@ -66,7 +68,7 @@ final class WorkSearch
     private function base(): Builder
     {
         return Work::query()
-            ->where('is_missing', false)
+            ->present()
             ->when($this->q !== null, function (Builder $w): void {
                 // ESCAPE '!' (not backslash): backslash literal handling diverges between SQLite and MySQL,
                 // so '!' keeps literal % / _ matching identically on both engines. / バックスラッシュはSQLite・MySQL間で挙動が異なるため '!' を使用。
@@ -94,15 +96,19 @@ final class WorkSearch
     public function results(int $page = 1, int $perPage = 60): LengthAwarePaginator
     {
         return $this->applyFacets($this->base())
-            ->with(['readingProgress', 'tags'])
+            ->with(Work::CARD_RELATIONS)
             ->orderBy('sort_title')
             ->paginate($perPage, ['*'], 'page', max(1, $page));
     }
 
-    /** Work ids under base + the OTHER facets (excluding $except's own selection). / 基底＋他次元の作品ID。 */
-    private function matchingWorkIds(?string $except): array
+    /**
+     * Works matching base + the OTHER facets (excluding $except's own selection),
+     * as an id subquery so the DB never ships the whole id list to PHP and back.
+     * 基底＋他次元に一致するidの副問合せ（PHPへid列を取り出さない）。
+     */
+    private function matchingWorksQuery(?string $except): Builder
     {
-        return $this->applyFacets($this->base(), except: $except)->pluck('id')->all();
+        return $this->applyFacets($this->base(), except: $except)->select('id');
     }
 
     /**
@@ -116,7 +122,7 @@ final class WorkSearch
         foreach (self::DIMENSIONS as $dim) {
             $counts = DB::table('work_tag')
                 ->join('tags', 'tags.id', '=', 'work_tag.tag_id')
-                ->whereIn('work_tag.work_id', $this->matchingWorkIds($dim))
+                ->whereIn('work_tag.work_id', $this->matchingWorksQuery($dim))
                 ->where('tags.type', $dim)
                 ->whereNull('tags.merged_into_id')
                 ->groupBy('tags.value')

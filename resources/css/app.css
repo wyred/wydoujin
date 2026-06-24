@@ -33,3 +33,20 @@
     /* Reader chrome scrim — translucent dark (the design system has no such token). */
     --reader-scrim: rgba(0, 0, 0, 0.55);
 }
+
+/* Error red is tuned for light surfaces; lift it for contrast on the dark canvas. */
+[data-dark='true'] {
+    --color-error: #ff6b63;
+}
+
+/* Visible keyboard focus. Many controls strip the native outline (border:none),
+   and no component defined one — this single rule covers every focusable element.
+   The --focus-ring token re-maps in dark mode. / キーボードフォーカスの可視化。 */
+:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+:focus:not(:focus-visible) {
+    outline: none;
+}

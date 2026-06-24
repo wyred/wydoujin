@@ -12,7 +12,7 @@ services:
       DB_PORT: ${DB_PORT:-3306}
       DB_DATABASE: ${DB_DATABASE:-wydoujin}
       DB_USERNAME: ${DB_USERNAME:-wydoujin}
-      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     volumes:
       - ${LIBRARY_PATH:-./library}:/library:ro
       - wydoujin_data:/data
@@ -26,8 +26,8 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-wydoujin}
       MYSQL_USER: ${DB_USERNAME:-wydoujin}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
     volumes:
       - wydoujin_db:/var/lib/mysql
     restart: unless-stopped

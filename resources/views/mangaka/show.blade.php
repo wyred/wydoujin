@@ -24,27 +24,23 @@
             @if ($series->isNotEmpty())
                 <section style="margin-bottom:var(--space-xxl);">
                     <x-section-heading>Series</x-section-heading>
-                    <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--grid-gutter);">
+                    <x-card-grid>
                         @foreach ($series as $s)
                             @php $cover = optional($s->works->first(fn ($w) => $w->cover_path !== null))->cover_path; @endphp
-                            <a href="/series/{{ $s->id }}" class="no-underline block">
-                                <x-cover :path="$cover" :title="$s->name" />
-                                <div class="truncate" style="margin-top:var(--space-xs); font:var(--type-caption-strong); color:var(--text-heading);">{{ $s->name }}</div>
-                                <div style="font:var(--type-fine); color:var(--text-muted);">{{ $s->works->count() }} {{ \Illuminate\Support\Str::plural('work', $s->works->count()) }}</div>
-                            </a>
+                            <x-collection-card href="/series/{{ $s->id }}" :path="$cover" :title="$s->name" :count="$s->works->count()" />
                         @endforeach
-                    </div>
+                    </x-card-grid>
                 </section>
             @endif
 
             @if ($standalone->isNotEmpty())
                 <section>
                     <x-section-heading>Works</x-section-heading>
-                    <div class="grid" style="grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--grid-gutter);">
+                    <x-card-grid>
                         @foreach ($standalone as $work)
                             <x-work-card :work="$work" />
                         @endforeach
-                    </div>
+                    </x-card-grid>
                 </section>
             @endif
 
@@ -120,16 +116,7 @@
                 this.busy = true;
                 this.error = '';
                 try {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
-                        },
-                        body: JSON.stringify(body),
-                    });
-                    if (! res.ok) throw new Error('http ' + res.status);
+                    await window.wyd.postJson(url, body);
                     window.location.reload();
                 } catch (e) {
                     this.error = 'Action failed — try again.';

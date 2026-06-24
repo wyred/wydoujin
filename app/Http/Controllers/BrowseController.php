@@ -13,7 +13,7 @@ final class BrowseController extends Controller
         $continueReading = ReadingProgress::query()
             ->where('current_page', '>', 0)
             ->where('is_completed', false)
-            ->whereHas('work', fn ($q) => $q->where('is_missing', false))
+            ->whereHas('work', fn ($q) => $q->present())
             ->with('work.mangaka', 'work.readingProgress', 'work.tags')
             ->orderByDesc('last_read_at')
             ->limit(12)
@@ -21,13 +21,14 @@ final class BrowseController extends Controller
             ->map(fn (ReadingProgress $p) => $p->work);
 
         $recentlyAdded = Work::query()
-            ->where('is_missing', false)
-            ->with('mangaka', 'readingProgress', 'tags')
+            ->present()
+            ->with('mangaka', ...Work::CARD_RELATIONS)
             ->latest()
             ->limit(12)
             ->get();
 
-        $hasAnyWork = Work::where('is_missing', false)->exists();
+        // Skip the existence query when recent works already loaded. / 取得済みなら存在確認を省略。
+        $hasAnyWork = $recentlyAdded->isNotEmpty() ?: Work::present()->exists();
 
         return view('home', compact('continueReading', 'recentlyAdded', 'hasAnyWork'));
     }

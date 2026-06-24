@@ -22,8 +22,7 @@ final class WorkTagController extends Controller
         $value = trim($data['value']);
         abort_if($value === '', 422, 'Value is required.');
 
-        $tag = Tag::firstOrCreate(['type' => $data['type'], 'value' => $value]);
-        $canonicalId = (int) ($tag->merged_into_id ?? $tag->id);
+        $canonicalId = Tag::canonicalIdFor($data['type'], $value);
         $work->tags()->syncWithoutDetaching([$canonicalId]);
         $work->update(['tags_locked' => true]);
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Work extends Model
 {
     use HasFactory;
+
+    /** Relations every work-card needs (avoids N+1). / workカード描画に必要な関連。 */
+    public const CARD_RELATIONS = ['readingProgress', 'tags'];
 
     protected $guarded = [];
 
@@ -43,5 +47,17 @@ class Work extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'work_tag');
+    }
+
+    /** Present on disk (not swept missing). / ディスク上に存在（欠落していない）。 */
+    public function scopePresent(Builder $query): void
+    {
+        $query->where('is_missing', false);
+    }
+
+    /** Swept as missing (file gone, row + progress kept). / 欠落（ファイル消失、行と進捗は保持）。 */
+    public function scopeMissing(Builder $query): void
+    {
+        $query->where('is_missing', true);
     }
 }

@@ -14,6 +14,9 @@ use App\Parsing\ParsedName;
  */
 final class WorkTagSync
 {
+    /** Per-run memo of (type,value) → canonical tag id; this instance lives one scan. / スキャン内メモ。 */
+    private array $canonicalCache = [];
+
     public function __construct(private readonly FilenameParser $parser)
     {
     }
@@ -42,8 +45,8 @@ final class WorkTagSync
     public function derive(ParsedName $parsed): array
     {
         $pairs = [];
-        $scalars = ['circle' => $parsed->circle, 'parody' => $parsed->parody, 'event' => $parsed->event, 'author' => $parsed->author];
-        foreach ($scalars as $type => $value) {
+        foreach (Tag::SCALAR_TYPES as $type) {
+            $value = $parsed->{$type}; // property names mirror SCALAR_TYPES / プロパティ名はSCALAR_TYPESと一致
             if ($value !== null && $value !== '') {
                 $pairs[] = [$type, $value];
             }
@@ -57,12 +60,10 @@ final class WorkTagSync
         return $pairs;
     }
 
-    /** firstOrCreate the (type,value) tag, resolved through any merge-alias. / 別名解決付き。 */
+    /** Resolve (type,value) to its canonical tag id, memoised per run. / 正規タグIDへ解決（メモ化）。 */
     private function canonicalId(string $type, string $value): int
     {
-        $tag = Tag::firstOrCreate(['type' => $type, 'value' => $value]);
-
-        return (int) ($tag->merged_into_id ?? $tag->id);
+        return $this->canonicalCache[$type."\0".$value] ??= Tag::canonicalIdFor($type, $value);
     }
 
     /** Delete canonical tags with no works that aren't a merge target. / 孤立タグ削除。 */

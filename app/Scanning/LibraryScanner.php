@@ -10,6 +10,7 @@ use App\Models\Work;
 use App\Parsing\FilenameParser;
 use App\Tagging\WorkTagSync;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -44,12 +45,13 @@ final class LibraryScanner implements ScannerContract
             }
         }
 
-        // Missing sweep: works not seen this scan. / 未検出のworksをmissingに。
-        $stats['missing'] = Work::where('last_seen_at', '<', $scanStart)
-            ->where('is_missing', false)
-            ->update(['is_missing' => true]);
-
-        $this->tags->pruneOrphans(); // drop tags no work references / 参照されないタグを削除
+        // Missing sweep + orphan prune, atomically. / 欠落掃引と孤立タグ削除を原子的に。
+        DB::transaction(function () use ($scanStart, &$stats): void {
+            $stats['missing'] = Work::where('last_seen_at', '<', $scanStart)
+                ->present()
+                ->update(['is_missing' => true]);
+            $this->tags->pruneOrphans(); // drop tags no work references / 参照されないタグを削除
+        });
 
         return $stats;
     }

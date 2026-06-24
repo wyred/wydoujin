@@ -1,0 +1,1 @@
+/command/with-contenv sh -c "mkdir -p /data/covers /config && chown -R www-data:www-data /data /config"

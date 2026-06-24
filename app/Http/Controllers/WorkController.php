@@ -9,7 +9,7 @@ final class WorkController extends Controller
 {
     public function show(Work $work)
     {
-        $work->load('mangaka', 'series', 'readingProgress', 'tags');
+        $work->load('mangaka', 'series', ...Work::CARD_RELATIONS);
 
         return view('work.show', compact('work'));
     }

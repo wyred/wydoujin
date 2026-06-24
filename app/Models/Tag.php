@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Parsing\ParsedName;
+use App\Support\SortKey;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,18 +19,28 @@ class Tag extends Model
 {
     use HasFactory;
 
-    /** All types. AUTO_TYPES are scanner-derived; others are manual-only. / 全タイプ。 */
-    public const TYPES = ['circle', 'parody', 'event', 'author', 'flag', 'theme'];
-    public const AUTO_TYPES = ['circle', 'parody', 'event', 'author', 'flag'];
+    /** Scalar metadata types — one value per work, scanner-derived. / スカラー型（作品毎1値）。 */
+    public const SCALAR_TYPES = ['circle', 'parody', 'event', 'author'];
+
+    /** Scanner-derived types: scalars + multi-valued flags. / スキャナ由来の型。 */
+    public const AUTO_TYPES = [...self::SCALAR_TYPES, 'flag'];
+
+    /** All tag types: auto (scanner) + manual-only theme. / 全タイプ（自動＋手動theme）。 */
+    public const TYPES = [...self::AUTO_TYPES, 'theme'];
 
     protected $guarded = [];
+
+    protected $casts = [
+        // bigint FK; MySQL returns it as a string, SQLite as int — cast for consistency. / 型を統一。
+        'merged_into_id' => 'integer',
+    ];
 
     protected static function booted(): void
     {
         // Derive sort_value from value when not supplied. / 未指定ならvalueから導出。
         static::creating(function (Tag $tag): void {
             if (($tag->sort_value ?? '') === '') {
-                $tag->sort_value = ParsedName::deriveSortTitle((string) $tag->value);
+                $tag->sort_value = SortKey::derive((string) $tag->value);
             }
         });
     }
@@ -55,6 +65,27 @@ class Tag extends Model
     public function scopeCanonical(Builder $query): Builder
     {
         return $query->whereNull('merged_into_id');
+    }
+
+    /**
+     * firstOrCreate the (type,value) tag and resolve merge-alias tombstones to
+     * the canonical tag id. The loop tolerates (and a visited-set breaks) chains
+     * deeper than one hop, so an attach can never land on a tombstone.
+     * (type,value)タグを取得/作成し、別名を辿って正規IDを返す（多段でも安全）。
+     */
+    public static function canonicalIdFor(string $type, string $value): int
+    {
+        $tag = self::firstOrCreate(['type' => $type, 'value' => $value]);
+
+        // Follow the alias chain. The FK guarantees each target exists; the visited
+        // set only guards against a (shouldn't-happen) cycle. / 別名連鎖を辿る。
+        $seen = [];
+        while ($tag->merged_into_id !== null && ! isset($seen[$tag->id])) {
+            $seen[$tag->id] = true;
+            $tag = self::findOrFail($tag->merged_into_id);
+        }
+
+        return (int) $tag->id;
     }
 
     /** Deep-link to /browse pre-filtered by this tag. / このタグで絞った/browseへのリンク。 */

@@ -1,2 +1,2 @@
 #!/command/with-contenv sh
-exec php /app/artisan schedule:work
+exec s6-setuidgid www-data php /app/artisan schedule:work

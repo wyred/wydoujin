@@ -10,6 +10,7 @@ use ZipArchive;
  */
 final class ArchiveInspector
 {
+    // Standalone default; at runtime the app injects config('scan.image_extensions'). / 既定値。
     public const DEFAULT_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'];
 
     /** @var string[] lowercase image extensions */

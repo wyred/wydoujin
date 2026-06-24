@@ -2,7 +2,7 @@
 
 namespace App\Tagging;
 
-use App\Parsing\ParsedName;
+use App\Support\SortKey;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,6 +15,8 @@ final class LegacyScalarBackfill
     {
         DB::table('works')->orderBy('id')->each(function (object $work): void {
             $pairs = [];
+            // Mirrors Tag::SCALAR_TYPES; kept inline so this migration helper stays
+            // model-independent. / Tag::SCALAR_TYPESと同一（移行用のため意図的にインライン）。
             foreach (['circle', 'parody', 'event', 'author'] as $type) {
                 $value = $work->{$type} ?? null;
                 if ($value !== null && $value !== '') {
@@ -45,7 +47,7 @@ final class LegacyScalarBackfill
         return (int) DB::table('tags')->insertGetId([
             'type' => $type,
             'value' => $value,
-            'sort_value' => ParsedName::deriveSortTitle($value),
+            'sort_value' => SortKey::derive($value),
             'created_at' => $now,
             'updated_at' => $now,
         ]);

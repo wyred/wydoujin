@@ -14,10 +14,10 @@ final class MangakaController extends Controller
         // limited eager-load, which would cap works across ALL rows).
         // 代表表紙は相関サブクエリで取得（移植性: limited eager-loadの罠を回避）。
         $mangaka = Mangaka::query()
-            ->withCount(['works' => fn ($q) => $q->where('is_missing', false)])
+            ->withCount(['works' => fn ($q) => $q->present()])
             ->addSelect(['rep_cover' => Work::select('cover_path')
                 ->whereColumn('mangaka_id', 'mangaka.id')
-                ->where('is_missing', false)
+                ->present()
                 ->whereNotNull('cover_path')
                 ->orderBy('sort_title')
                 ->limit(1)])
@@ -30,15 +30,15 @@ final class MangakaController extends Controller
     public function show(Mangaka $mangaka)
     {
         $series = $mangaka->series()
-            ->whereHas('works', fn ($q) => $q->where('is_missing', false))
-            ->with(['works' => fn ($q) => $q->where('is_missing', false)->orderBy('sort_title')])
+            ->whereHas('works', fn ($q) => $q->present())
+            ->with(['works' => fn ($q) => $q->present()->orderBy('sort_title')])
             ->orderBy('name')
             ->get();
 
         $standalone = $mangaka->works()
-            ->where('is_missing', false)
+            ->present()
             ->whereNull('series_id')
-            ->with('readingProgress', 'tags')
+            ->with(Work::CARD_RELATIONS)
             ->orderBy('sort_title')
             ->get();
 
@@ -46,7 +46,7 @@ final class MangakaController extends Controller
         // stem suggestion for the default new-series name. / 管理モード用の平坦リスト。
         $normalizer = new \App\Series\TitleNormalizer();
         $manageWorks = $mangaka->works()
-            ->where('is_missing', false)
+            ->present()
             ->with('series:id,name')
             ->orderBy('sort_title')
             ->get(['id', 'title', 'series_id', 'mangaka_id'])

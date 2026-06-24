@@ -68,6 +68,24 @@ test('counts are dynamic and exclude own dimension', function (): void {
     $this->assertSame(['P' => 2, 'Q' => 1], $parody);
 });
 
+test('counts narrow under two active dimensions', function (): void {
+    $w1 = workForWorkSearch(['title' => 'w1', 'sort_title' => '1']);
+    $this->attachTag($w1, 'circle', 'A'); $this->attachTag($w1, 'parody', 'P'); $this->attachTag($w1, 'author', 'X');
+    $w2 = workForWorkSearch(['title' => 'w2', 'sort_title' => '2']);
+    $this->attachTag($w2, 'circle', 'A'); $this->attachTag($w2, 'parody', 'Q'); $this->attachTag($w2, 'author', 'Y');
+    $w3 = workForWorkSearch(['title' => 'w3', 'sort_title' => '3']);
+    $this->attachTag($w3, 'circle', 'B'); $this->attachTag($w3, 'parody', 'P'); $this->attachTag($w3, 'author', 'X');
+
+    $facets = (new WorkSearch(circle: ['A'], parody: ['P']))->facets();
+
+    // author is counted under circle:A AND parody:P → only w1 → X:1 (Y excluded). / 2次元交差で第3次元が絞られる。
+    $this->assertSame(['X' => 1], collect($facets['author'])->pluck('count', 'value')->all());
+    // circle ignores its own selection but honours parody:P → w1,w3.
+    $this->assertSame(['A' => 1, 'B' => 1], collect($facets['circle'])->pluck('count', 'value')->all());
+    // parody ignores its own selection but honours circle:A → w1,w2.
+    $this->assertSame(['P' => 1, 'Q' => 1], collect($facets['parody'])->pluck('count', 'value')->all());
+});
+
 test('selected value kept visible when zero', function (): void {
     $w = workForWorkSearch(['title' => 'only', 'sort_title' => '1']); $this->attachTag($w, 'circle', 'A');
 

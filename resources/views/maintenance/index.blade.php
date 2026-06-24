@@ -11,7 +11,7 @@
 
         {{-- Scan panel + history (Alpine, live) --}}
         <div x-data="maintenance(@js($initial))">
-            <x-section-heading>Library</x-section-heading>
+            <x-page-heading>Library</x-page-heading>
 
             <div class="flex items-center" style="gap:var(--space-md); margin-bottom:var(--space-xl); flex-wrap:wrap;">
                 <x-button type="button" x-on:click="scan()" x-bind:disabled="scanning || busy"
@@ -51,21 +51,7 @@
                     </a>
                 @endforeach
             </div>
-            @if ($missing->hasPages())
-                <nav class="flex items-center justify-center" style="gap:var(--space-md); margin-top:var(--space-xl);">
-                    @if ($missing->onFirstPage())
-                        <span style="font:var(--type-caption); color:var(--text-muted);">Prev</span>
-                    @else
-                        <a href="{{ $missing->previousPageUrl() }}" class="no-underline" style="font:var(--type-caption); color:var(--text-link);">Prev</a>
-                    @endif
-                    <span style="font:var(--type-caption); color:var(--text-muted);">Page {{ $missing->currentPage() }} of {{ $missing->lastPage() }}</span>
-                    @if ($missing->hasMorePages())
-                        <a href="{{ $missing->nextPageUrl() }}" class="no-underline" style="font:var(--type-caption); color:var(--text-link);">Next</a>
-                    @else
-                        <span style="font:var(--type-caption); color:var(--text-muted);">Next</span>
-                    @endif
-                </nav>
-            @endif
+            <x-pagination :paginator="$missing" />
         @endif
     </main>
 
@@ -89,15 +75,7 @@
                 this.busy = true;
                 this.error = '';
                 try {
-                    const res = await fetch('/scan', {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
-                        },
-                    });
-                    if (!res.ok) throw new Error('http ' + res.status);
-                    const data = await res.json();
+                    const data = await window.wyd.postJson('/scan');
                     this.latest = data.scan;
                     this.startPolling();
                 } catch (e) {
@@ -112,8 +90,7 @@
             },
             async tick() {
                 try {
-                    const res = await fetch('/maintenance/status', { headers: { 'Accept': 'application/json' } });
-                    const data = await res.json();
+                    const data = await window.wyd.getJson('/maintenance/status');
                     this.latest = data.scan;
                     if (!this.isActive(this.latest)) {
                         clearInterval(this._poll);

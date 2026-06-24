@@ -2,6 +2,7 @@
 
 use App\Archive\ArchiveException;
 use App\Archive\CoverGenerator;
+use App\Archive\ZipPageReader;
 
 /** @param array<string,string> $entries */
 function makeZipCoverGenerator(array $entries): string
@@ -55,7 +56,7 @@ afterEach(function () {
 test('generates resized webp cover', function (): void {
     $zip = makeZipCoverGenerator(['001.png' => pngBytesCoverGenerator(800, 600)]);
 
-    $coverPath = (new CoverGenerator($this->coversDir, 400, 80))
+    $coverPath = (new CoverGenerator(new ZipPageReader(), $this->coversDir, 400, 80))
         ->generate($zip, '001.png', 'deadbeef');
 
     $this->assertSame('covers/deadbeef.webp', $coverPath);
@@ -72,12 +73,12 @@ test('throws when entry missing', function (): void {
     $zip = makeZipCoverGenerator(['001.png' => pngBytesCoverGenerator(100, 100)]);
 
     $this->expectException(ArchiveException::class);
-    (new CoverGenerator($this->coversDir))->generate($zip, 'nope.png', 'h');
+    (new CoverGenerator(new ZipPageReader(), $this->coversDir))->generate($zip, 'nope.png', 'h');
 });
 
 test('throws on undecodable image', function (): void {
     $zip = makeZipCoverGenerator(['bad.png' => 'not a real image']);
 
     $this->expectException(ArchiveException::class);
-    (new CoverGenerator($this->coversDir))->generate($zip, 'bad.png', 'h');
+    (new CoverGenerator(new ZipPageReader(), $this->coversDir))->generate($zip, 'bad.png', 'h');
 });

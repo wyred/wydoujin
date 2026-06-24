@@ -27,6 +27,20 @@ test('attach resolves alias to canonical', function (): void {
     $this->assertSame([$canon->id], $work->fresh()->tags->pluck('id')->all());
 });
 
+test('attach resolves a multi-hop alias chain to the final canonical', function (): void {
+    // Defensive: a 2-hop tombstone chain should never form, but if one did (a bug or
+    // a manual edit), resolution must reach the true canonical — never attach a tombstone.
+    // 多段の別名連鎖でも最終的な正規タグへ解決する。
+    $work = Work::factory()->create();
+    $canon = Tag::create(['type' => 'parody', 'value' => 'Canon']);
+    $mid = Tag::create(['type' => 'parody', 'value' => 'Mid', 'merged_into_id' => $canon->id]);
+    Tag::create(['type' => 'parody', 'value' => 'Leaf', 'merged_into_id' => $mid->id]);
+
+    $this->postJson('/work/'.$work->id.'/tags/attach', ['type' => 'parody', 'value' => 'Leaf'])->assertStatus(201);
+
+    $this->assertSame([$canon->id], $work->fresh()->tags->pluck('id')->all());
+});
+
 test('attach validates type and value', function (): void {
     $work = Work::factory()->create();
     $this->postJson('/work/'.$work->id.'/tags/attach', ['type' => 'bogus', 'value' => 'x'])->assertStatus(422);

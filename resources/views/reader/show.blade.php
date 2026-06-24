@@ -90,15 +90,7 @@ document.addEventListener('alpine:init', () => {
         saveProgress() {
             clearTimeout(this._save);
             this._save = setTimeout(() => {
-                fetch('/work/' + this.id + '/progress', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
-                    },
-                    body: JSON.stringify({ current_page: this.page }),
-                }).catch(() => {});
+                window.wyd.postJson('/work/' + this.id + '/progress', { current_page: this.page }).catch(() => {});
             }, 800);
         },
         setDir(d) { this.dir = d; localStorage.setItem('wyd-reader-dir', d); },

@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->string('content_hash', 64)->unique();
             $table->foreignId('mangaka_id')->constrained('mangaka')->cascadeOnDelete();
             $table->foreignId('series_id')->nullable()->constrained('series')->nullOnDelete();
-            $table->string('relative_path', 1024);
+            $table->string('relative_path', 768); // indexed below; 768 chars fits the MySQL utf8mb4 key limit / MySQLキー長に収まる
             $table->string('filename');
             $table->string('title');
             $table->string('title_raw');
@@ -35,6 +35,7 @@ return new class extends Migration {
 
             $table->index('mangaka_id');
             $table->index('series_id');
+            $table->index('relative_path'); // fast incremental-scan lookup (per-file, every scan) / 増分スキャンの高速検索
             $table->index('parody');
             $table->index('circle');
             $table->index('event');

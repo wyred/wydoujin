@@ -30,6 +30,11 @@ class Tag extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        // bigint FK; MySQL returns it as a string, SQLite as int — cast for consistency. / 型を統一。
+        'merged_into_id' => 'integer',
+    ];
+
     protected static function booted(): void
     {
         // Derive sort_value from value when not supplied. / 未指定ならvalueから導出。

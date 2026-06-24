@@ -11,6 +11,14 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind a TLS-terminating reverse proxy (e.g. Nginx Proxy Manager): trust
+        // the proxy so X-Forwarded-Proto is honored and generated URLs use https.
+        // Without this Laravel sees the forwarded HTTP request as plain http and
+        // builds http:// asset URLs, which browsers block as mixed content.
+        // 'at: *' is safe because the container publishes no host port — the only
+        // ingress is through the proxy, so the immediate peer is always trusted.
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\RequirePassword::class,

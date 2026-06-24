@@ -11,16 +11,6 @@ use Illuminate\Http\Response;
 /** Streams a work's page bytes straight from its zip. / zipからページ画像を直接配信。 */
 final class PageController extends Controller
 {
-    /** Entry-extension → content-type. / 拡張子→Content-Type。 */
-    private const MIME = [
-        'jpg' => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'png' => 'image/png',
-        'gif' => 'image/gif',
-        'webp' => 'image/webp',
-        'avif' => 'image/avif',
-    ];
-
     public function show(Request $request, Work $work, int $n, ZipPageReader $reader): Response
     {
         $entries = $work->entries ?? [];
@@ -46,7 +36,7 @@ final class PageController extends Controller
 
         $ext = strtolower(pathinfo($entryName, PATHINFO_EXTENSION));
         $response->setContent($bytes);
-        $response->headers->set('Content-Type', self::MIME[$ext] ?? 'application/octet-stream');
+        $response->headers->set('Content-Type', config('scan.image_mime_types')[$ext] ?? 'application/octet-stream');
 
         return $response;
     }

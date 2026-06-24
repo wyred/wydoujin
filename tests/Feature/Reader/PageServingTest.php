@@ -61,6 +61,15 @@ test('refuses a work whose path escapes the library root', function (): void {
     }
 });
 
+test('a corrupt zip inside the library is 404', function (): void {
+    $work = $this->makeReadableWork(['001.jpg']);
+    // Non-zip bytes at the real in-library path: passes confinement, but ZipArchive::open
+    // fails → the ArchiveException is caught + reported → 404.
+    file_put_contents($this->libraryPath.'/'.$work->relative_path, 'not a zip');
+
+    $this->get("/work/{$work->id}/page/1")->assertNotFound();
+});
+
 test('missing zip file is 404', function (): void {
     $mangaka = Mangaka::factory()->create();
     $work = Work::factory()->for($mangaka)->create([

@@ -2,6 +2,7 @@
 
 namespace App\Browse;
 
+use App\Models\Tag;
 use App\Models\Work;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,7 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class WorkSearch
 {
-    public const DIMENSIONS = ['circle', 'parody', 'event', 'author', 'flag', 'theme'];
+    /** Facet dimensions = the tag types; single source. / ファセット次元はタグ型と同一。 */
+    public const DIMENSIONS = Tag::TYPES;
 
     /**
      * @param string[] $circle

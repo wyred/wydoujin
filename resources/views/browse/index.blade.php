@@ -1,12 +1,15 @@
 @extends('layouts.app')
 
 @php
+    // Every dimension-keyed object is built from the one dimension list, so adding a
+    // facet type only touches Tag::TYPES. / 次元は単一ソースから生成。
+    $dims = \App\Browse\WorkSearch::DIMENSIONS;
     $initial = [
         'q' => $search->q ?? '',
-        'selected' => [
-            'circle' => $search->circle, 'parody' => $search->parody, 'event' => $search->event,
-            'author' => $search->author, 'flag' => $search->flag, 'theme' => $search->theme,
-        ],
+        'groups' => collect($dims)->map(fn ($d) => ['key' => $d, 'label' => ucfirst($d)])->all(),
+        'selected' => collect($dims)->mapWithKeys(fn ($d) => [$d => $search->$d])->all(),
+        'expanded' => collect($dims)->mapWithKeys(fn ($d) => [$d => false])->all(),
+        'within' => collect($dims)->mapWithKeys(fn ($d) => [$d => ''])->all(),
         'facets' => $facets,
         'total' => $total,
         'page' => $works->currentPage(),
@@ -94,8 +97,11 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('browse', (initial) => ({
             q: initial.q ?? '',
-            selected: initial.selected ?? { circle: [], parody: [], event: [], author: [], flag: [], theme: [] },
-            facets: initial.facets ?? { circle: [], parody: [], event: [], author: [], flag: [], theme: [] },
+            groups: initial.groups ?? [],
+            selected: initial.selected ?? {},
+            facets: initial.facets ?? {},
+            expanded: initial.expanded ?? {},
+            within: initial.within ?? {},
             total: initial.total ?? 0,
             page: initial.page ?? 1,
             hasMore: initial.hasMore ?? false,
@@ -103,16 +109,6 @@
             error: false,
             railOpen: false,
             cap: 15,
-            groups: [
-                { key: 'circle', label: 'Circle' },
-                { key: 'parody', label: 'Parody' },
-                { key: 'event', label: 'Event' },
-                { key: 'author', label: 'Author' },
-                { key: 'flag', label: 'Flag' },
-                { key: 'theme', label: 'Theme' },
-            ],
-            expanded: { circle: false, parody: false, event: false, author: false, flag: false, theme: false },
-            within: { circle: '', parody: '', event: '', author: '', flag: '', theme: '' },
             _debounce: null,
             _reqId: 0,
 
@@ -123,7 +119,7 @@
                 });
             },
 
-            dims() { return ['circle', 'parody', 'event', 'author', 'flag', 'theme']; },
+            dims() { return this.groups.map((g) => g.key); },
             isChecked(dim, value) { return this.selected[dim].includes(value); },
 
             visibleRows(dim) {

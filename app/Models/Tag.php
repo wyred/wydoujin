@@ -57,6 +57,29 @@ class Tag extends Model
         return $query->whereNull('merged_into_id');
     }
 
+    /**
+     * firstOrCreate the (type,value) tag and resolve merge-alias tombstones to
+     * the canonical tag id. The loop tolerates (and a visited-set breaks) chains
+     * deeper than one hop, so an attach can never land on a tombstone.
+     * (type,value)タグを取得/作成し、別名を辿って正規IDを返す（多段でも安全）。
+     */
+    public static function canonicalIdFor(string $type, string $value): int
+    {
+        $tag = self::firstOrCreate(['type' => $type, 'value' => $value]);
+
+        $seen = [];
+        while ($tag->merged_into_id !== null && ! isset($seen[$tag->id])) {
+            $seen[$tag->id] = true;
+            $next = self::find($tag->merged_into_id);
+            if ($next === null) {
+                break;
+            }
+            $tag = $next;
+        }
+
+        return (int) $tag->id;
+    }
+
     /** Deep-link to /browse pre-filtered by this tag. / このタグで絞った/browseへのリンク。 */
     public function browseUrl(): string
     {

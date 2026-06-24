@@ -3,7 +3,7 @@
 # --- Frontend build ---
 # Base images pinned by digest (reproducible; a re-tag can't change the build). Keep the
 # tag comment for readability; bump digests via Dependabot. / 再現性のためダイジェスト固定。
-FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS frontend
+FROM node:26-alpine@sha256:a2dc166a387cc6ca1e62d0c8e265e49ca985d6e60abc9fe6e6c3d6ce8e63f606 AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

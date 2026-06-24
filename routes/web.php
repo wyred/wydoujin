@@ -21,7 +21,8 @@ Route::get('/', [BrowseController::class, 'home'])->name('home');
 Route::get('/health', fn () => response()->json(['status' => 'ok']));
 
 Route::get('/login', [PasswordLoginController::class, 'show'])->name('login');
-Route::post('/login', [PasswordLoginController::class, 'store']);
+Route::post('/login', [PasswordLoginController::class, 'store'])->middleware('throttle:5,1'); // brute-force guard / 総当たり対策
+Route::post('/logout', [PasswordLoginController::class, 'destroy'])->name('logout');
 
 Route::get('/work/{work}/page/{n}', [PageController::class, 'show'])
     ->whereNumber('n')

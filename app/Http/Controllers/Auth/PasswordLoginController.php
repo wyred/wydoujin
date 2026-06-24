@@ -25,4 +25,13 @@ class PasswordLoginController extends Controller
 
         return redirect()->intended('/');
     }
+
+    public function destroy(Request $request)
+    {
+        $request->session()->forget('password_ok');
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/login');
+    }
 }

@@ -11,6 +11,13 @@
         @endforeach
     </div>
 
+    @if (config('app.password'))
+        <form method="POST" action="/logout" class="shrink-0">
+            @csrf
+            <button type="submit" style="background:none; border:none; cursor:pointer; color:var(--color-body-muted); font:var(--type-nav);">Logout</button>
+        </form>
+    @endif
+
     <button type="button"
         x-data="{ dark: document.documentElement.getAttribute('data-dark') === 'true' }"
         @click="dark = !dark; dark ? document.documentElement.setAttribute('data-dark','true') : document.documentElement.removeAttribute('data-dark'); localStorage.setItem('wyd-theme', dark ? 'dark' : 'light')"

@@ -33,6 +33,16 @@ test('health is always reachable', function (): void {
     $this->getJson('/health')->assertOk();
 });
 
+test('logout clears the session and re-closes the gate', function (): void {
+    config(['app.password' => 'secret']);
+    $this->post('/login', ['password' => 'secret'])->assertRedirect('/');
+    $this->get('/')->assertOk();
+
+    $this->post('/logout')->assertRedirect('/login');
+
+    $this->get('/')->assertRedirect('/login');
+});
+
 test('zero is treated as a real password', function (): void {
     config(['app.password' => '0']);
     $this->get('/')->assertRedirect('/login');

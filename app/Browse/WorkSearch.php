@@ -66,7 +66,7 @@ final class WorkSearch
     private function base(): Builder
     {
         return Work::query()
-            ->where('is_missing', false)
+            ->present()
             ->when($this->q !== null, function (Builder $w): void {
                 // ESCAPE '!' (not backslash): backslash literal handling diverges between SQLite and MySQL,
                 // so '!' keeps literal % / _ matching identically on both engines. / バックスラッシュはSQLite・MySQL間で挙動が異なるため '!' を使用。
@@ -94,7 +94,7 @@ final class WorkSearch
     public function results(int $page = 1, int $perPage = 60): LengthAwarePaginator
     {
         return $this->applyFacets($this->base())
-            ->with(['readingProgress', 'tags'])
+            ->with(Work::CARD_RELATIONS)
             ->orderBy('sort_title')
             ->paginate($perPage, ['*'], 'page', max(1, $page));
     }

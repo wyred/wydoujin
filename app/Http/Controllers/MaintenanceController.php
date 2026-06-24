@@ -14,7 +14,7 @@ final class MaintenanceController extends Controller
     public function index()
     {
         $missing = Work::query()
-            ->where('is_missing', true)
+            ->missing()
             ->with('mangaka')
             ->orderBy('mangaka_id')
             ->orderBy('sort_title')

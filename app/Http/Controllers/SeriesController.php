@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Series;
+use App\Models\Work;
 
 /** Series detail — works in reading order. / シリーズ詳細。 */
 final class SeriesController extends Controller
@@ -11,8 +12,8 @@ final class SeriesController extends Controller
     {
         $series->load('mangaka');
         $works = $series->works()
-            ->where('is_missing', false)
-            ->with('readingProgress', 'tags')
+            ->present()
+            ->with(Work::CARD_RELATIONS)
             ->orderBy('sort_title')
             ->get();
 

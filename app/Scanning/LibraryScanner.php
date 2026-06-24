@@ -46,7 +46,7 @@ final class LibraryScanner implements ScannerContract
 
         // Missing sweep: works not seen this scan. / 未検出のworksをmissingに。
         $stats['missing'] = Work::where('last_seen_at', '<', $scanStart)
-            ->where('is_missing', false)
+            ->present()
             ->update(['is_missing' => true]);
 
         $this->tags->pruneOrphans(); // drop tags no work references / 参照されないタグを削除

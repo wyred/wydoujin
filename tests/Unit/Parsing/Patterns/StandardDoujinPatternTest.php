@@ -20,7 +20,6 @@ test('full standard filename', function (): void {
     $this->assertSame('四畳半物語', $r->title);
     $this->assertSame('オリジナル', $r->parody);
     $this->assertSame(['DL版'], $r->flags);
-    $this->assertNull($r->language);
 });
 
 test('no event', function (): void {

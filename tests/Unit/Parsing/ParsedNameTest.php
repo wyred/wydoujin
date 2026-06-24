@@ -18,7 +18,6 @@ test('make derives sort title and holds fields', function (): void {
     $this->assertSame('Z.A.P.', $r->circle);
     $this->assertNull($r->author);
     $this->assertNull($r->parody);
-    $this->assertNull($r->language);
     $this->assertSame(['DL版'], $r->flags);
 });
 

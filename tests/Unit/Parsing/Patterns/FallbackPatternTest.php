@@ -19,7 +19,6 @@ test('parse uses whole filename as title', function (): void {
     $this->assertNull($r->circle);
     $this->assertNull($r->author);
     $this->assertNull($r->parody);
-    $this->assertNull($r->language);
     $this->assertSame([], $r->flags);
 
     $r2 = $p->parse('Two Lovers EN', 'SomeMangaka');
@@ -30,7 +29,6 @@ test('parse uses whole filename as title', function (): void {
     $this->assertNull($r2->circle);
     $this->assertNull($r2->author);
     $this->assertNull($r2->parody);
-    $this->assertNull($r2->language);
     $this->assertSame([], $r2->flags);
 });
 

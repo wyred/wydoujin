@@ -17,7 +17,6 @@ final class ParsedName
         public readonly ?string $circle = null,
         public readonly ?string $author = null,
         public readonly ?string $parody = null,
-        public readonly ?string $language = null,
         public readonly array $flags = [],
     ) {
     }
@@ -34,7 +33,6 @@ final class ParsedName
         ?string $circle = null,
         ?string $author = null,
         ?string $parody = null,
-        ?string $language = null,
         array $flags = [],
     ): self {
         return new self(
@@ -45,7 +43,6 @@ final class ParsedName
             circle: $circle,
             author: $author,
             parody: $parody,
-            language: $language,
             flags: $flags,
         );
     }

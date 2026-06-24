@@ -10,7 +10,8 @@ export default defineConfig({
             refresh: true,
             fonts: [
                 bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
+                    // Match the design-system weight ladder (300/400/600/700, no 500). / 重みの階段に合わせる。
+                    weights: [300, 400, 600, 700],
                 }),
             ],
         }),

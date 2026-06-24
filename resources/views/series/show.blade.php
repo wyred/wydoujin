@@ -50,16 +50,7 @@
                 this.busy = true;
                 this.error = '';
                 try {
-                    const res = await fetch('/series/' + this.id + '/rename', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
-                        },
-                        body: JSON.stringify({ name: v }),
-                    });
-                    if (! res.ok) throw new Error('http ' + res.status);
+                    await window.wyd.postJson('/series/' + this.id + '/rename', { name: v });
                     window.location.reload();
                 } catch (e) {
                     this.error = 'Rename failed — try again.';

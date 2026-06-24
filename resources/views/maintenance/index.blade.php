@@ -89,15 +89,7 @@
                 this.busy = true;
                 this.error = '';
                 try {
-                    const res = await fetch('/scan', {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
-                        },
-                    });
-                    if (!res.ok) throw new Error('http ' + res.status);
-                    const data = await res.json();
+                    const data = await window.wyd.postJson('/scan');
                     this.latest = data.scan;
                     this.startPolling();
                 } catch (e) {
@@ -112,8 +104,7 @@
             },
             async tick() {
                 try {
-                    const res = await fetch('/maintenance/status', { headers: { 'Accept': 'application/json' } });
-                    const data = await res.json();
+                    const data = await window.wyd.getJson('/maintenance/status');
                     this.latest = data.scan;
                     if (!this.isActive(this.latest)) {
                         clearInterval(this._poll);

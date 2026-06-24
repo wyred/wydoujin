@@ -106,16 +106,7 @@
             async post(url, body) {
                 this.busy = true; this.error = '';
                 try {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
-                        },
-                        body: JSON.stringify(body ?? {}),
-                    });
-                    if (! res.ok) throw new Error('http ' + res.status);
+                    await window.wyd.postJson(url, body);
                     window.location.reload();
                 } catch (e) { this.error = 'Action failed — try again.'; this.busy = false; }
             },
@@ -129,8 +120,7 @@
                 const q = this.newValue.trim();
                 if (! q) { this.suggestions = []; return; }
                 try {
-                    const res = await fetch('/tags/suggest?type=' + encodeURIComponent(this.newType) + '&q=' + encodeURIComponent(q), { headers: { Accept: 'application/json' } });
-                    this.suggestions = await res.json();
+                    this.suggestions = await window.wyd.getJson('/tags/suggest?type=' + encodeURIComponent(this.newType) + '&q=' + encodeURIComponent(q));
                 } catch (e) { this.suggestions = []; }
             },
         }));

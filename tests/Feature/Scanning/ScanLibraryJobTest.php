@@ -12,6 +12,23 @@ uses(BuildsLibraryFixtures::class);
 beforeEach(fn () => $this->bootLibrary());
 afterEach(fn () => $this->cleanLibrary());
 
+test('the scan job carries a long, configurable per-job timeout', function (): void {
+    // Overriding the default 60s queue timeout is what stops big-library scans from
+    // being killed after a minute. / 既定60sを上書きして巨大スキャンの強制終了を防ぐ。
+    config(['scan.scan_timeout' => 4242]);
+
+    $this->assertSame(4242, (new ScanLibrary('manual'))->timeout);
+});
+
+test('the database queue retry_after stays above the scan timeout', function (): void {
+    // If retry_after <= the scan's timeout, a still-running scan would be re-reserved by a
+    // second worker mid-flight → a double scan. / retry_afterがtimeout以下だと二重スキャン。
+    $this->assertGreaterThan(
+        (int) config('scan.scan_timeout'),
+        (int) config('queue.connections.database.retry_after'),
+    );
+});
+
 test('job runs detection and folds series stats into the scan', function (): void {
     // Two volumes of one series in one mangaka folder. Distinct entry lists →
     // distinct content_hash (else the 2nd zip looks like a move of the 1st).

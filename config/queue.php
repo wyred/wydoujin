@@ -40,7 +40,10 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must stay above the longest job's timeout (the ScanLibrary scan, SCAN_TIMEOUT)
+            // or a still-running scan gets re-reserved by a second worker mid-flight → double
+            // scan. Default sits just above the scan budget. / retry_afterは最長ジョブのtimeout超。
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', (int) env('SCAN_TIMEOUT', 3600) + 60),
             'after_commit' => false,
         ],
 

@@ -18,6 +18,13 @@ return [
     // Writable data root; covers go in <data_path>/covers. / 書き込み可能データ領域。
     'data_path' => env('DATA_PATH', '/data'),
 
+    // Per-job timeout (seconds) for the ScanLibrary job. A full scan is O(library size)
+    // — it opens each new/changed zip's central directory and writes per-work rows — so it
+    // routinely outlives the queue's default 60s. Cover decoding is offloaded, but a huge
+    // first scan still needs a generous budget. Keep DB_QUEUE_RETRY_AFTER above this.
+    // スキャンは規模依存で長い。既定60sでは足りないため専用の長いタイムアウト。
+    'scan_timeout' => (int) env('SCAN_TIMEOUT', 3600),
+
     'image_mime_types' => $imageMimeTypes,
     'image_extensions' => array_keys($imageMimeTypes), // lowercase; indexed by the scanner / 索引対象（小文字）。
 

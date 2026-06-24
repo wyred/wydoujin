@@ -104,7 +104,10 @@ the image to GHCR on push to `main` and on `v*` tags.
   added workers never double-process). The `ScanLibrary` scan walks the library and, for each
   newly-added work, dispatches a `GenerateCover` job another worker picks up — so the scan stays
   fast and a single bad image never fails the scan (the cover job logs and leaves `cover_path`
-  null). Covers are generated with Intervention Image → `webp` under `/data/covers/`.
+  null). Covers are generated with Intervention Image → `webp` under `/data/covers/`. The scan
+  job carries its own long per-job timeout (`SCAN_TIMEOUT`, default 3600s) since a big first scan
+  is O(library size) and outlives the queue's default 60s; `DB_QUEUE_RETRY_AFTER` is kept above
+  it (defaults to `SCAN_TIMEOUT + 60`) so a running scan is never re-reserved by another worker.
 
 ### Data model (7 tables)
 `mangaka` (one per top folder) · `series` (per-mangaka grouping) · `works` (one per `.zip`;

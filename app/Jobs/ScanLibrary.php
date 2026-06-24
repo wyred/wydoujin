@@ -23,10 +23,18 @@ final class ScanLibrary implements ShouldQueue
     /** A scan isn't meaningfully retryable; a poisoned file would just re-crash. / リトライしない。 */
     public int $tries = 1;
 
+    /**
+     * A full scan is O(library size) (open each new zip's central directory + per-work DB
+     * writes), so it routinely outlives the queue's default 60s timeout on big libraries.
+     * Give it a generous, configurable budget. / 規模依存で長いため専用の長いタイムアウト。
+     */
+    public int $timeout;
+
     public function __construct(
         public readonly string $triggeredBy = 'manual',
         public readonly ?int $scanId = null,
     ) {
+        $this->timeout = (int) config('scan.scan_timeout', 3600);
     }
 
     public function handle(ScannerContract $scanner, SeriesDetectorContract $detector): void

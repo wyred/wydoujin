@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Browse\WorkSearch;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WorkResource;
+use App\Jobs\RescanWork;
 use App\Models\Mangaka;
 use App\Models\Work;
 use Illuminate\Database\Eloquent\Builder;
@@ -32,6 +33,14 @@ final class WorkController extends Controller
         $work->load('mangaka', 'series', ...Work::CARD_RELATIONS);
 
         return new WorkResource($work);
+    }
+
+    /** Queue a single-work rescan (repair missing cover/page info). / 1作品の再走査を投入。 */
+    public function rescan(Work $work)
+    {
+        RescanWork::dispatch($work->id);
+
+        return response()->json(['ok' => true], 202);
     }
 
     /** Organize-oriented filters layered on top of search + facets. / 整理向けの追加絞り込み。 */

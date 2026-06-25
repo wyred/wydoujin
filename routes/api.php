@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\BulkTagController;
 use App\Http\Controllers\Api\FacetController;
 use App\Http\Controllers\Api\MangakaController;
+use App\Http\Controllers\Api\ScanController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\WorkController;
@@ -42,4 +43,9 @@ Route::prefix('v1')->middleware(EnsureApiToken::class)->group(function (): void 
     Route::delete('/series/works', [SeriesController::class, 'ungroup']);
     Route::post('/series/{series}/works', [SeriesController::class, 'addWorks']);
     Route::patch('/series/{series}', [SeriesController::class, 'rename']);
+
+    // Maintenance
+    Route::post('/scan', [ScanController::class, 'store']);
+    Route::get('/scan', [ScanController::class, 'show']);
+    Route::post('/works/{work}/rescan', [WorkController::class, 'rescan']);
 });

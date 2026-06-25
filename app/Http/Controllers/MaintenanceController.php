@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\ScanLibrary;
+use App\Actions\Maintenance\TriggerScan;
 use App\Models\Scan;
 use App\Models\Work;
 
@@ -29,20 +29,10 @@ final class MaintenanceController extends Controller
         ]);
     }
 
-    public function scan()
+    public function scan(TriggerScan $action)
     {
-        // No second scan while one is queued/running. The check-then-create race is
-        // tolerated: single-user + the client disables the button, so the worst case is
-        // one redundant scan the next poll reconciles. / 二重起動防止（単一ユーザのため競合は許容）。
-        $active = Scan::active()->latest()->first();
-        if ($active) {
-            return response()->json(['scan' => $this->serialize($active)], 202);
-        }
-
-        $scan = Scan::create(['status' => 'queued', 'triggered_by' => 'manual']);
-        ScanLibrary::dispatch('manual', $scan->id);
-
-        return response()->json(['scan' => $this->serialize($scan)], 202);
+        // No second scan while one is queued/running; the action dedupes. / 二重起動防止。
+        return response()->json(['scan' => $this->serialize($action->handle('manual'))], 202);
     }
 
     public function status()

@@ -38,6 +38,20 @@ test('continue reading shows only in progress newest first', function (): void {
     $this->assertTrue(strpos($cr, 'NewProgress') < strpos($cr, 'OldProgress')); // newest first
 });
 
+test('random picks shows up to 8 present works and hides missing', function (): void {
+    $m = Mangaka::factory()->create();
+    Work::factory()->for($m)->count(10)->create();
+    Work::factory()->for($m)->create(['title' => 'GhostPick', 'is_missing' => true]);
+
+    $content = $this->get('/')->assertOk()->assertSee('Random Picks')->getContent();
+
+    $start = strpos($content, 'Random Picks');
+    $picks = substr($content, $start);
+
+    $this->assertSame(8, substr_count($picks, 'href="/work/'));
+    $this->assertStringNotContainsString('GhostPick', $picks);
+});
+
 test('recently added lists works and hides missing', function (): void {
     $m = Mangaka::factory()->create();
     Work::factory()->for($m)->create(['title' => 'ShownWork']);

@@ -27,9 +27,16 @@ final class BrowseController extends Controller
             ->limit(12)
             ->get();
 
+        $randomPicks = Work::query()
+            ->present()
+            ->with('mangaka', ...Work::CARD_RELATIONS)
+            ->inRandomOrder()
+            ->limit(8)
+            ->get();
+
         // Skip the existence query when recent works already loaded. / 取得済みなら存在確認を省略。
         $hasAnyWork = $recentlyAdded->isNotEmpty() ?: Work::present()->exists();
 
-        return view('home', compact('continueReading', 'recentlyAdded', 'hasAnyWork'));
+        return view('home', compact('continueReading', 'recentlyAdded', 'randomPicks', 'hasAnyWork'));
     }
 }

@@ -24,7 +24,7 @@
                 </section>
             @endif
 
-            <section>
+            <section style="margin-bottom:var(--space-xxl);">
                 <x-section-heading>Recently Added</x-section-heading>
                 <x-card-grid>
                     @foreach ($recentlyAdded as $work)
@@ -32,6 +32,17 @@
                     @endforeach
                 </x-card-grid>
             </section>
+
+            @if ($randomPicks->isNotEmpty())
+                <section>
+                    <x-section-heading>Random Picks</x-section-heading>
+                    <x-card-grid>
+                        @foreach ($randomPicks as $work)
+                            <x-work-card :work="$work" />
+                        @endforeach
+                    </x-card-grid>
+                </section>
+            @endif
         @endif
     </main>
 @endsection

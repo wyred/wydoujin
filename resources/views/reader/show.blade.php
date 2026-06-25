@@ -65,7 +65,7 @@ document.addEventListener('alpine:init', () => {
         id, pages, page: initial,
         dir: localStorage.getItem('wyd-reader-dir') || 'rtl',
         fit: localStorage.getItem('wyd-reader-fit') || 'height',
-        chrome: true,
+        chrome: false,
         settings: false,
         _idle: null,
         _save: null,
@@ -75,7 +75,6 @@ document.addEventListener('alpine:init', () => {
         init() {
             this.$watch('page', () => { this.preload(); this.saveProgress(); });
             this.preload();
-            this.armIdle();
         },
         pageUrl(n) { return '/work/' + this.id + '/page/' + n; },
         next() { if (this.page < this.pages) this.page++; },

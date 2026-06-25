@@ -37,6 +37,7 @@ final class WorkSearch
         public readonly array $author = [],
         public readonly array $flag = [],
         public readonly array $theme = [],
+        public readonly bool $missing = false,
     ) {}
 
     public static function fromRequest(Request $request): self
@@ -55,6 +56,7 @@ final class WorkSearch
             author: $clean($request->query('author', [])),
             flag: $clean($request->query('flag', [])),
             theme: $clean($request->query('theme', [])),
+            missing: $request->boolean('missing'),
         );
     }
 
@@ -64,11 +66,11 @@ final class WorkSearch
         return $this->{$dim};
     }
 
-    /** Base query: not-missing + optional title LIKE. / 基底: 欠落除外＋題名LIKE。 */
+    /** Base query: presence (present, or missing-only) + optional title LIKE. / 基底: 在/欠落＋題名LIKE。 */
     private function base(): Builder
     {
         return Work::query()
-            ->present()
+            ->when($this->missing, fn (Builder $w) => $w->missing(), fn (Builder $w) => $w->present())
             ->when($this->q !== null, function (Builder $w): void {
                 // ESCAPE '!' (not backslash): backslash literal handling diverges between SQLite and MySQL,
                 // so '!' keeps literal % / _ matching identically on both engines. / バックスラッシュはSQLite・MySQL間で挙動が異なるため '!' を使用。
@@ -93,9 +95,15 @@ final class WorkSearch
         return $query;
     }
 
+    /** Base + facet filters as a query builder (for callers needing extra wheres). / 基底＋ファセットのビルダ。 */
+    public function builder(): Builder
+    {
+        return $this->applyFacets($this->base());
+    }
+
     public function results(int $page = 1, int $perPage = 60): LengthAwarePaginator
     {
-        return $this->applyFacets($this->base())
+        return $this->builder()
             ->with(Work::CARD_RELATIONS)
             ->orderBy('sort_title')
             ->paginate($perPage, ['*'], 'page', max(1, $page));

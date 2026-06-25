@@ -55,6 +55,7 @@ the image to GHCR on push to `main` and on `v*` tags.
 ## Where things live (implemented)
 
 - **Routes:** `routes/web.php` (all behind the `RequirePassword` gate except `/health` + `/login`);
+  `routes/api.php` (the `/api/v1` LLM organize API, behind the `EnsureApiToken` bearer gate — F5);
   `routes/console.php` (the daily scheduled scan).
 - **Browse/discovery:** `BrowseController` (`/`) · `MangakaController` (`/mangaka`, `/mangaka/{slug}` —
   the latter also hosts series **manage mode**) · `SeriesController` (`/series/{id}`) ·
@@ -79,6 +80,14 @@ the image to GHCR on push to `main` and on `v*` tags.
 - **UI:** Blade in `resources/views/`; Alpine components registered inline via `alpine:init`;
   reusable partials in `resources/views/components/` (`x-nav`, `x-cover`, `x-work-card`, `x-badge`,
   `x-button`, `x-section-heading`).
+- **LLM organize API (F5):** `routes/api.php` exposes `/api/v1` (versioned, stateless) behind
+  `app/Http/Middleware/EnsureApiToken.php` (bearer `API_TOKEN` from `config('app.api_token')`; **unset
+  → 503**, bad/missing → 401 — fail-closed, the opposite of the web `APP_PASSWORD` rule). Controllers
+  in `app/Http/Controllers/Api/` (Work, Mangaka, Series, Tag, WorkTag, BulkTag, Facet, Scan) return
+  `app/Http/Resources/` JSON. **No-drift rule:** organize logic lives once in `app/Actions/`
+  (`Tags/*`, `Series/*`, `Maintenance/TriggerScan`) and is shared by both the web controllers and the
+  API, so `tags_locked`/`series_locked`/merge-alias invariants never diverge. A static **`public/llms.txt`**
+  (always public, no token, no secrets) documents the API for agents.
 
 ## Testing & verification
 

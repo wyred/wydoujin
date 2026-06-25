@@ -118,6 +118,27 @@ test('tags index lists canonical tags with counts, filtered by type and q', func
     $this->getJson('/api/v1/tags?type=bogus', apiAuth())->assertStatus(422);
 });
 
+test('works series filter returns only that series', function (): void {
+    $m = Mangaka::factory()->create();
+    $series = Series::factory()->for($m)->create();
+    Work::factory()->for($m)->create(['title' => 'InSeries', 'series_id' => $series->id]);
+    Work::factory()->for($m)->create(['title' => 'Out']);
+
+    $this->getJson("/api/v1/works?series={$series->id}", apiAuth())
+        ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.title', 'InSeries');
+});
+
+test('tags index filters by q substring', function (): void {
+    $m = Mangaka::factory()->create();
+    $work = Work::factory()->for($m)->create();
+    $match = Tag::create(['type' => 'circle', 'value' => 'Zucchini']);
+    $other = Tag::create(['type' => 'circle', 'value' => 'Apple']);
+    $work->tags()->attach([$match->id, $other->id]);
+
+    $this->getJson('/api/v1/tags?q=ucch', apiAuth())
+        ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.value', 'Zucchini');
+});
+
 test('facets returns counts across dimensions', function (): void {
     $m = Mangaka::factory()->create();
     $w = Work::factory()->for($m)->create();

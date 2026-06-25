@@ -125,4 +125,17 @@ return [
 
     'password' => env('APP_PASSWORD'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | LLM Organize API Token
+    |--------------------------------------------------------------------------
+    |
+    | Bearer token guarding the /api/v1 machine API. Unset/empty → the API is
+    | disabled (503). Set a long random value to enable it. Read from env, never
+    | hardcoded — same pattern as APP_PASSWORD.
+    |
+    */
+
+    'api_token' => env('API_TOKEN'),
+
 ];

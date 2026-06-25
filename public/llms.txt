@@ -1,0 +1,98 @@
+# wydoujin API
+
+> wydoujin is a self-hosted, single-user reading server for a doujin/manga library.
+> This file documents the machine API that lets an LLM agent help organize the library:
+> search works, read the tag vocabulary, and edit tags, series, and scans.
+
+All organize operations are database-only. They never touch the read-only library
+files on disk. A work's identity is its `content_hash`, so edits survive renames.
+
+## Base URL
+
+`{APP_URL}/api/v1` — for example `http://localhost/api/v1`.
+
+## Authentication
+
+Send the server-configured token (set in the deployment's `.env` as `API_TOKEN`) on
+every request, as either header:
+
+- `Authorization: Bearer <API_TOKEN>`
+- `X-Api-Token: <API_TOKEN>`
+
+Also send `Accept: application/json` (and `Content-Type: application/json` for bodies).
+
+Responses:
+- `401 Unauthenticated` — token missing or wrong.
+- `503 API disabled` — no `API_TOKEN` is configured on the server.
+- `422` — validation or an invariant violation (the JSON `message` explains).
+- `404` — unknown id.
+
+The token is configured server-side only and is never returned by the API.
+
+## Data model
+
+- **mangaka** — one per top-level library folder (the artist/circle the folder is named for).
+- **series** — a per-mangaka grouping of works (series never cross mangaka).
+- **work** — one per `.zip`. Metadata lives in tags, not columns.
+- **tag** — a normalized `type` + `value`. Types: `circle`, `parody`, `event`, `author`,
+  `flag` (all auto-derived from the filename) and `theme` (manual-only).
+- Editing a work's tags sets `tags_locked` (the scanner won't re-derive it); editing a
+  work's series sets `series_locked` (auto-detection won't undo it). These make your
+  changes durable across rescans.
+
+## Read endpoints
+
+- `GET /works` — search/list works. Query params:
+  - `q` — title search.
+  - `circle[]`, `parody[]`, `event[]`, `author[]`, `flag[]`, `theme[]` — facet filters
+    (OR within a type, AND across types). Values are raw (often Japanese), URL-encoded.
+  - `mangaka` — id or slug. `series` — id.
+  - `untagged=1` — only works with no tags. `tags_locked=1` — only locked works.
+  - `missing=1` — only works swept as missing.
+  - `page`, `per_page` (max 100).
+- `GET /works/{id}` — one work in full (tags grouped by type, mangaka, series, progress).
+- `GET /mangaka` — list mangaka with work/series counts.
+- `GET /mangaka/{id}` — a mangaka with its series and works.
+- `GET /series/{id}` — a series with its works.
+- `GET /tags` — the canonical tag vocabulary. Params: `type`, `q`. Each has `works_count`.
+- `GET /facets` — dynamic facet counts for the same filters as `GET /works`.
+
+## Write endpoints
+
+Per-work tags (each returns the updated work):
+- `POST /works/{id}/tags` — attach one tag. Body: `{ "type": "theme", "value": "netorare" }`.
+- `PUT /works/{id}/tags` — replace the whole set. Body: `{ "tags": [ {"type","value"}, ... ] }`
+  (an empty array clears all tags; the work stays locked).
+- `DELETE /works/{id}/tags` — detach. Body: `{ "tag_id": 12 }` or `{ "type", "value" }`.
+- `POST /works/{id}/tags/reset` — clear the lock and re-derive tags from the filename.
+
+Bulk tags (one tag across many works):
+- `POST /tags/attach` — Body: `{ "type", "value", "work_ids": [1,2,3] }`.
+- `POST /tags/detach` — Body: `{ "type", "value", "work_ids": [1,2,3] }` (lenient: skips
+  works that don't carry the tag).
+
+Global tags (tidy the vocabulary; durable across rescans via a merge-alias):
+- `PATCH /tags/{id}` — rename. Body: `{ "value": "NTR" }`. Renaming onto an existing value merges.
+- `POST /tags/{id}/merge` — merge this tag into another. Body: `{ "into_id": 9 }`.
+
+Series (works in a group must all belong to one mangaka):
+- `POST /series` — group works into a new series. Body: `{ "work_ids": [1,2], "name": "..." }`.
+- `POST /series/{id}/works` — add works. Body: `{ "work_ids": [3] }`.
+- `DELETE /series/works` — ungroup works (back to standalone). Body: `{ "work_ids": [1] }`.
+- `PATCH /series/{id}` — rename. Body: `{ "name": "..." }`.
+
+Maintenance:
+- `POST /scan` — trigger a full library scan (dedupes if one is already running).
+- `GET /scan` — latest scan status.
+- `POST /works/{id}/rescan` — re-inspect a single work.
+
+## Suggested workflow
+
+1. `GET /works?untagged=1&mangaka=...` — find unorganized works.
+2. `GET /tags?type=theme&q=...` — check the existing vocabulary before inventing values.
+3. `POST /tags/attach` — bulk-tag the matching works.
+4. `POST /series` — group works that belong to one series.
+5. `PATCH /tags/{id}` or `POST /tags/{id}/merge` — consolidate duplicate/variant tags.
+
+Because per-work edits set `tags_locked` and series edits set `series_locked`, and a
+rename/merge leaves a normalizing alias, your changes persist through future scans.

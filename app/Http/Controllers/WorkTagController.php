@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Tags\AttachWorkTag;
+use App\Actions\Tags\DetachWorkTag;
+use App\Actions\Tags\ResetWorkTags;
 use App\Models\Tag;
 use App\Models\Work;
-use App\Tagging\WorkTagSync;
 use Illuminate\Http\Request;
 
 /**
@@ -13,38 +15,30 @@ use Illuminate\Http\Request;
  */
 final class WorkTagController extends Controller
 {
-    public function attach(Request $request, Work $work)
+    public function attach(Request $request, Work $work, AttachWorkTag $action)
     {
         $data = $request->validate([
             'type' => ['required', 'string', 'in:'.implode(',', Tag::TYPES)],
             'value' => ['required', 'string', 'max:255'],
         ]);
-        $value = trim($data['value']);
-        abort_if($value === '', 422, 'Value is required.');
 
-        $canonicalId = Tag::canonicalIdFor($data['type'], $value);
-        $work->tags()->syncWithoutDetaching([$canonicalId]);
-        $work->update(['tags_locked' => true]);
+        $canonicalId = $action->handle($work, $data['type'], $data['value']);
 
         return response()->json(['ok' => true, 'tag_id' => $canonicalId], 201);
     }
 
-    public function detach(Request $request, Work $work)
+    public function detach(Request $request, Work $work, DetachWorkTag $action)
     {
         $data = $request->validate(['tag_id' => ['required', 'integer']]);
-        // Only detach a tag the work actually has — a foreign id must not flip the lock. / 紐付くタグのみ。
-        abort_unless($work->tags()->where('tags.id', $data['tag_id'])->exists(), 422, 'Tag is not on this work.');
-        $work->tags()->detach($data['tag_id']);
-        $work->update(['tags_locked' => true]);
+        $action->handle($work, (int) $data['tag_id']);
 
         return response()->json(['ok' => true]);
     }
 
-    public function reset(Work $work, WorkTagSync $sync)
+    public function reset(Work $work, ResetWorkTags $action)
     {
-        $work->update(['tags_locked' => false]);
-        $sync->sync($work); // re-derive from the filename / ファイル名から再導出
-        $work->load('tags');
+        $action->handle($work);
+        $work->load('tags'); // re-derived from the filename / ファイル名から再導出
 
         return response()->json(['ok' => true]);
     }

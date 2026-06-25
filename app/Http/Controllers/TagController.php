@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Tags\MergeTag;
+use App\Actions\Tags\RenameTag;
 use App\Models\Tag;
-use App\Support\SortKey;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Global tag management — rename / merge (F4). Both write a merge-alias so the
@@ -29,30 +29,15 @@ final class TagController extends Controller
         return view('tags.index', compact('tags', 'tagsByType'));
     }
 
-    public function rename(Request $request, Tag $tag)
+    public function rename(Request $request, Tag $tag, RenameTag $action)
     {
-        abort_if($tag->merged_into_id !== null, 422, 'Tag is an alias.');
         $data = $request->validate(['value' => ['required', 'string', 'max:255']]);
-        $value = trim($data['value']);
-        abort_if($value === '', 422, 'Value is required.');
-        if ($value === $tag->value) {
-            return response()->json(['ok' => true]);
-        }
-
-        $existing = Tag::query()->canonical()->where('type', $tag->type)->where('value', $value)->first();
-        if ($existing !== null) {
-            return $this->mergeInto($tag, $existing);
-        }
-
-        $old = $tag->value;
-        $tag->update(['value' => $value, 'sort_value' => SortKey::derive($value)]);
-        // Tombstone the old value so re-derivation normalizes to the renamed tag. / 旧値を別名化。
-        Tag::create(['type' => $tag->type, 'value' => $old, 'merged_into_id' => $tag->id]);
+        $action->handle($tag, $data['value']);
 
         return response()->json(['ok' => true]);
     }
 
-    public function merge(Request $request, Tag $tag)
+    public function merge(Request $request, Tag $tag, MergeTag $action)
     {
         $data = $request->validate(['into_id' => ['required', 'integer']]);
         $into = Tag::findOrFail($data['into_id']);
@@ -60,20 +45,7 @@ final class TagController extends Controller
         abort_if($into->type !== $tag->type, 422, 'Tags are different types.');
         abort_if($into->merged_into_id !== null, 422, 'Target is an alias.');
 
-        return $this->mergeInto($tag, $into);
-    }
-
-    /** Repoint $from's works to $into, tombstone $from, flatten chains. / 統合本体。 */
-    private function mergeInto(Tag $from, Tag $into)
-    {
-        // Atomic: repoint $from's works to $into, tombstone $from, flatten chains. / 統合は原子的に。
-        DB::transaction(function () use ($from, $into): void {
-            $workIds = $from->works()->pluck('works.id')->all();
-            $into->works()->syncWithoutDetaching($workIds);
-            $from->works()->detach();
-            $from->update(['merged_into_id' => $into->id]);
-            Tag::where('merged_into_id', $from->id)->update(['merged_into_id' => $into->id]);
-        });
+        $action->handle($tag, $into);
 
         return response()->json(['ok' => true]);
     }

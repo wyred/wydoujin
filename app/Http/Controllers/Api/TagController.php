@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Tags\MergeTag;
+use App\Actions\Tags\RenameTag;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TagResource;
 use App\Models\Tag;
 use Illuminate\Http\Request;
 
-/** Read endpoint for the canonical tag vocabulary. / 正規タグ一覧API。 */
+/** Read + organize endpoints for the canonical tag vocabulary. / タグ取得・整理API。 */
 final class TagController extends Controller
 {
     public function index(Request $request)
@@ -30,5 +32,26 @@ final class TagController extends Controller
             ->paginate(100);
 
         return TagResource::collection($tags);
+    }
+
+    public function rename(Request $request, Tag $tag, RenameTag $action)
+    {
+        $data = $request->validate(['value' => ['required', 'string', 'max:255']]);
+        $action->handle($tag, $data['value']);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function merge(Request $request, Tag $tag, MergeTag $action)
+    {
+        $data = $request->validate(['into_id' => ['required', 'integer']]);
+        $into = Tag::findOrFail($data['into_id']);
+        abort_if($into->id === $tag->id, 422, 'Cannot merge a tag into itself.');
+        abort_if($into->type !== $tag->type, 422, 'Tags are different types.');
+        abort_if($into->merged_into_id !== null, 422, 'Target is an alias.');
+
+        $action->handle($tag, $into);
+
+        return response()->json(['ok' => true]);
     }
 }

@@ -2,118 +2,65 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Series\AddWorksToSeries;
+use App\Actions\Series\GroupWorks;
+use App\Actions\Series\RenameSeries;
+use App\Actions\Series\UngroupWorks;
 use App\Models\Series;
-use App\Models\Work;
-use App\Support\SortKey;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Manual series management — group / add / ungroup / rename (F3c). / 手動シリーズ管理。
  *
  * DB-only (never touches /library). Every op sets series_locked=true (+ is_auto=false
  * on touched series) so SeriesDetector::detect() never undoes the manual decision.
+ * The actual work lives in app/Actions/Series so the API shares it. / 実体はActionへ。
  */
 final class SeriesManagementController extends Controller
 {
-    /** Group works into a new manual series. / 新規シリーズに束ねる。 */
-    public function group(Request $request)
+    public function group(Request $request, GroupWorks $action)
     {
         $data = $request->validate([
             'work_ids' => ['required', 'array', 'min:1'],
             'work_ids.*' => ['integer'],
             'name' => ['required', 'string', 'max:255'],
         ]);
-        $name = trim($data['name']);
-        abort_if($name === '', 422, 'Name is required.');
-        $works = $this->sameMangakaWorks($data['work_ids']);
-        $mangakaId = (int) $works->first()->mangaka_id;
 
-        $series = DB::transaction(function () use ($name, $mangakaId, $works): Series {
-            $series = Series::create([
-                'mangaka_id' => $mangakaId,
-                'name' => $name,
-                'sort_name' => SortKey::derive($name),
-                'is_auto' => false,
-            ]);
-            Work::whereIn('id', $works->pluck('id'))->update(['series_id' => $series->id, 'series_locked' => true]);
-            Series::pruneEmptyAuto($mangakaId);
-
-            return $series;
-        });
+        $series = $action->handle($data['work_ids'], $data['name']);
 
         return response()->json(['series_id' => $series->id], 201);
     }
 
-    /** Add works to an existing series. / 既存シリーズに追加。 */
-    public function add(Request $request, Series $series)
+    public function add(Request $request, Series $series, AddWorksToSeries $action)
     {
         $data = $request->validate([
             'work_ids' => ['required', 'array', 'min:1'],
             'work_ids.*' => ['integer'],
         ]);
-        $works = $this->sameMangakaWorks($data['work_ids']);
-        abort_if((int) $works->first()->mangaka_id !== (int) $series->mangaka_id, 422, 'Series belongs to another mangaka.');
 
-        DB::transaction(function () use ($series, $works): void {
-            $series->update(['is_auto' => false]);
-            Work::whereIn('id', $works->pluck('id'))->update(['series_id' => $series->id, 'series_locked' => true]);
-            Series::pruneEmptyAuto((int) $series->mangaka_id);
-        });
+        $action->handle($series, $data['work_ids']);
 
         return response()->json(['ok' => true]);
     }
 
-    /** Remove works from their series (→ standalone). / シリーズから外す。 */
-    public function ungroup(Request $request)
+    public function ungroup(Request $request, UngroupWorks $action)
     {
         $data = $request->validate([
             'work_ids' => ['required', 'array', 'min:1'],
             'work_ids.*' => ['integer'],
         ]);
-        $works = $this->sameMangakaWorks($data['work_ids']);
-        $mangakaId = (int) $works->first()->mangaka_id;
 
-        DB::transaction(function () use ($works, $mangakaId): void {
-            Work::whereIn('id', $works->pluck('id'))->update(['series_id' => null, 'series_locked' => true]);
-            Series::pruneEmptyAuto($mangakaId);
-        });
+        $action->handle($data['work_ids']);
 
         return response()->json(['ok' => true]);
     }
 
-    /** Rename a series. / シリーズ名を変更。 */
-    public function rename(Request $request, Series $series)
+    public function rename(Request $request, Series $series, RenameSeries $action)
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
-        $name = trim($data['name']);
-        abort_if($name === '', 422, 'Name is required.');
 
-        DB::transaction(function () use ($series, $name): void {
-            $series->update([
-                'name' => $name,
-                'sort_name' => SortKey::derive($name),
-                'is_auto' => false,
-            ]);
-            $series->works()->update(['series_locked' => true]);
-        });
+        $action->handle($series, $data['name']);
 
         return response()->json(['ok' => true]);
-    }
-
-    /**
-     * Load the works by id and ensure they all belong to one mangaka. / 同一マンガ家か検証。
-     *
-     * @param  int[]  $ids
-     */
-    private function sameMangakaWorks(array $ids): Collection
-    {
-        $ids = array_values(array_unique(array_map('intval', $ids)));
-        $works = Work::whereIn('id', $ids)->get(['id', 'mangaka_id']);
-        abort_if($works->count() !== count($ids), 422, 'Unknown work in selection.');
-        abort_if($works->pluck('mangaka_id')->unique()->count() !== 1, 422, 'Works span multiple mangaka.');
-
-        return $works;
     }
 }

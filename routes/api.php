@@ -32,4 +32,14 @@ Route::prefix('v1')->middleware(EnsureApiToken::class)->group(function (): void 
     // Bulk tags
     Route::post('/tags/attach', [BulkTagController::class, 'attach']);
     Route::post('/tags/detach', [BulkTagController::class, 'detach']);
+
+    // Global tags
+    Route::patch('/tags/{tag}', [TagController::class, 'rename']);
+    Route::post('/tags/{tag}/merge', [TagController::class, 'merge']);
+
+    // Series
+    Route::post('/series', [SeriesController::class, 'store']);
+    Route::delete('/series/works', [SeriesController::class, 'ungroup']);
+    Route::post('/series/{series}/works', [SeriesController::class, 'addWorks']);
+    Route::patch('/series/{series}', [SeriesController::class, 'rename']);
 });

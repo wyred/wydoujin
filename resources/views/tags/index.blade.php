@@ -51,6 +51,8 @@
         </template>
 
         <div x-show="error" x-text="error" style="color:var(--color-error); font:var(--type-caption);"></div>
+
+        <x-pagination :paginator="$tags" />
     </main>
 
     <script>

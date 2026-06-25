@@ -15,6 +15,24 @@ test('index lists canonical tags with counts', function (): void {
     $this->get('/tags')->assertOk()->assertSee('Z.A.P.');
 });
 
+test('index paginates at 100 tags per page', function (): void {
+    $w = Work::factory()->create();
+    foreach (range(0, 149) as $i) {
+        $this->attachTag($w, 'circle', sprintf('circle-%03d', $i));
+    }
+
+    $this->get('/tags')
+        ->assertOk()
+        ->assertSee('circle-099')   // last tag on page 1
+        ->assertDontSee('circle-100') // spills to page 2
+        ->assertSee('Next ›', false);
+
+    $this->get('/tags?page=2')
+        ->assertOk()
+        ->assertSee('circle-149')
+        ->assertDontSee('circle-099');
+});
+
 test('index hides orphan tags with no works', function (): void {
     $w = Work::factory()->create();
     $this->attachTag($w, 'circle', 'Used');

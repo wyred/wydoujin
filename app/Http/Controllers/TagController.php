@@ -15,14 +15,18 @@ final class TagController extends Controller
 {
     public function index()
     {
-        $tagsByType = Tag::query()->canonical()
+        // Paginate (100/page) so libraries with thousands of tags load fast.
+        // Ordering by type keeps each page mostly within one type group. / ページング。
+        $tags = Tag::query()->canonical()
             ->whereHas('works') // hide orphan tags with no works (cleaned by the scan's pruneOrphans) / 孤立タグは隠す
             ->withCount('works')
             ->orderBy('type')->orderBy('sort_value')
-            ->get()
-            ->groupBy('type');
+            ->paginate(100)
+            ->withQueryString();
 
-        return view('tags.index', compact('tagsByType'));
+        $tagsByType = $tags->getCollection()->groupBy('type');
+
+        return view('tags.index', compact('tags', 'tagsByType'));
     }
 
     public function rename(Request $request, Tag $tag)

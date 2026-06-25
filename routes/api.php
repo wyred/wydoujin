@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\BulkTagController;
 use App\Http\Controllers\Api\FacetController;
 use App\Http\Controllers\Api\MangakaController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\WorkController;
+use App\Http\Controllers\Api\WorkTagController;
 use App\Http\Middleware\EnsureApiToken;
 use Illuminate\Support\Facades\Route;
 
@@ -20,4 +22,14 @@ Route::prefix('v1')->middleware(EnsureApiToken::class)->group(function (): void 
     Route::get('/series/{series}', [SeriesController::class, 'show']);
     Route::get('/tags', [TagController::class, 'index']);
     Route::get('/facets', [FacetController::class, 'index']);
+
+    // Per-work tags
+    Route::post('/works/{work}/tags', [WorkTagController::class, 'attach']);
+    Route::put('/works/{work}/tags', [WorkTagController::class, 'replace']);
+    Route::delete('/works/{work}/tags', [WorkTagController::class, 'detach']);
+    Route::post('/works/{work}/tags/reset', [WorkTagController::class, 'reset']);
+
+    // Bulk tags
+    Route::post('/tags/attach', [BulkTagController::class, 'attach']);
+    Route::post('/tags/detach', [BulkTagController::class, 'detach']);
 });

@@ -145,8 +145,23 @@ kept separate so rescans never disturb progress) · `scans` (scan history/status
   gate guards everything except `/health` and `/login`.
 - **Filename parser** is an **ordered registry of pattern classes** (in `config/parser.php`),
   each with `matches()`/`parse()`, ending in a fallback that always matches (whole filename →
-  title). Add a naming quirk = add one class + register it; don't rewrite. Mangaka always comes
-  from the folder, never the filename. Real filenames are the test fixtures (TDD, written first).
+  title). The registry is `StandardDoujinPattern` (leading `(event)`/`[circle]`) →
+  `TrailingMetadataPattern` (title-first: peel trailing `(parody)` + `[flags]`) → `FallbackPattern`;
+  pattern peel-helpers are shared via the `PeelsGroups` trait. `CircleTitlePattern` (`circle - title`)
+  exists but is **not** globally registered — the resolver consults it **only for bucket paths** so a
+  normal title containing ` - ` is never split. Add a naming quirk = add one class + register it;
+  don't rewrite. Real filenames are the test fixtures (TDD, written first).
+- **Path → metadata** is resolved once by `app/Parsing/PathMetadataResolver.php` (`resolve(relativePath)`
+  → `{mangakaName, ParsedName}`), a **pure function of `relative_path` + filename** so the scan path and
+  the rescan re-derive path (`WorkTagSync`) produce identical tags. Discovery is **recursive** (nested
+  zips are scanned; a subfolder inside a real mangaka is flattened — its name is ignored). Mangaka still
+  always comes from the folder, **except** for `_`-bucket folders. **Buckets are exactly `_series` and
+  `_small`** (allowlist): their mangaka is derived from the filename (author→circle→`Unknown`), and
+  `_series/<X>/` adds `<X>` as a **parody** tag; every other top folder (incl. `_雑誌`) stays a literal
+  mangaka. Folder names also derive tags via `MangakaFolder`: `Circle (Author)` → circle + author;
+  `Romaji - Japanese`/plain → an author tag = the folder name (populates the author facet library-wide).
+  These folder/subfolder tags ride on `ParsedName::extraTags`, so a work may hold more than one
+  parody/author (de-duped on identical `(type,value)`).
 - **Series detection** runs **per-mangaka only** (series never cross folders). **Never group by
   parody** (the Fate/Grand-Order trap). Manual merge/split/rename sets `series_locked` on the
   affected works, and auto-detection **never undoes a locked work**.

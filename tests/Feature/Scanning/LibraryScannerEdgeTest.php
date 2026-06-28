@@ -66,3 +66,15 @@ test('empty library finalises with zero stats', function (): void {
     $this->assertSame(0, $scan->stats['missing']);
     $this->assertSame(0, Work::count());
 });
+
+// Library path doesn't exist at all → discovery yields nothing, scan still completes.
+// / ライブラリのパスが存在しなくても完了する。
+test('missing library path finalises with zero stats', function (): void {
+    config(['scan.library_path' => $this->libraryPath.'/does-not-exist']);
+
+    $scan = $this->runScan();
+
+    $this->assertSame('completed', $scan->status);
+    $this->assertSame(0, $scan->stats['added']);
+    $this->assertSame(0, Work::count());
+});

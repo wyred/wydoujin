@@ -2,6 +2,7 @@
 
 use App\Parsing\Patterns\FallbackPattern;
 use App\Parsing\Patterns\StandardDoujinPattern;
+use App\Parsing\Patterns\TrailingMetadataPattern;
 
 return [
     /*
@@ -11,6 +12,7 @@ return [
      */
     'patterns' => [
         StandardDoujinPattern::class,
+        TrailingMetadataPattern::class,
         FallbackPattern::class,
     ],
 ];

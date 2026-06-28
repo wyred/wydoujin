@@ -10,7 +10,10 @@ use App\Support\SortKey;
  */
 final class ParsedName
 {
-    /** @param string[] $flags */
+    /**
+     * @param string[] $flags
+     * @param list<array{0:string,1:string}> $extraTags  folder/subfolder-derived [type,value] tags
+     */
     public function __construct(
         public readonly string $title,
         public readonly string $titleRaw,
@@ -20,6 +23,7 @@ final class ParsedName
         public readonly ?string $author = null,
         public readonly ?string $parody = null,
         public readonly array $flags = [],
+        public readonly array $extraTags = [],
     ) {
     }
 
@@ -27,6 +31,7 @@ final class ParsedName
      * Build a result, deriving sortTitle from the title. / タイトルからsortTitleを導出して生成。
      *
      * @param string[] $flags
+     * @param list<array{0:string,1:string}> $extraTags
      */
     public static function make(
         string $title,
@@ -36,6 +41,7 @@ final class ParsedName
         ?string $author = null,
         ?string $parody = null,
         array $flags = [],
+        array $extraTags = [],
     ): self {
         return new self(
             title: $title,
@@ -46,6 +52,27 @@ final class ParsedName
             author: $author,
             parody: $parody,
             flags: $flags,
+            extraTags: $extraTags,
+        );
+    }
+
+    /**
+     * Copy with extra [type,value] tags appended (folder/subfolder enrichment). / 追加タグを付与した複製。
+     *
+     * @param list<array{0:string,1:string}> $extraTags
+     */
+    public function withExtraTags(array $extraTags): self
+    {
+        return new self(
+            title: $this->title,
+            titleRaw: $this->titleRaw,
+            sortTitle: $this->sortTitle,
+            event: $this->event,
+            circle: $this->circle,
+            author: $this->author,
+            parody: $this->parody,
+            flags: $this->flags,
+            extraTags: [...$this->extraTags, ...$extraTags],
         );
     }
 }

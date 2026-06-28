@@ -6,7 +6,7 @@ use App\Archive\ArchiveException;
 use App\Archive\ArchiveInspector;
 use App\Models\Scan;
 use App\Models\Work;
-use App\Parsing\FilenameParser;
+use App\Parsing\PathMetadataResolver;
 use App\Tagging\WorkTagSync;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
@@ -44,7 +44,7 @@ final class ProcessZip implements ShouldQueue
     ) {
     }
 
-    public function handle(ArchiveInspector $inspector, FilenameParser $parser, WorkTagSync $tags): void
+    public function handle(ArchiveInspector $inspector, PathMetadataResolver $resolver, WorkTagSync $tags): void
     {
         if ($this->batch()?->cancelled()) {
             return;
@@ -53,7 +53,7 @@ final class ProcessZip implements ShouldQueue
         $scanStart = Carbon::parse($this->scanStartIso);
 
         try {
-            $outcome = $this->process($inspector, $parser, $tags, $scanStart);
+            $outcome = $this->process($inspector, $resolver, $tags, $scanStart);
         } catch (ArchiveException $e) {
             report($e); // log and count as failed; the batch carries on / 記録して継続
             $outcome = 'failed';
@@ -66,7 +66,7 @@ final class ProcessZip implements ShouldQueue
     }
 
     /** @return 'added'|'updated'|'moved'|'skipped'|'failed' */
-    private function process(ArchiveInspector $inspector, FilenameParser $parser, WorkTagSync $tags, Carbon $scanStart): string
+    private function process(ArchiveInspector $inspector, PathMetadataResolver $resolver, WorkTagSync $tags, Carbon $scanStart): string
     {
         if (! is_file($this->zipPath)) {
             return 'skipped'; // deleted between planning and now / 計画後に消失
@@ -84,7 +84,8 @@ final class ProcessZip implements ShouldQueue
         }
 
         $inspection = $inspector->inspect($this->zipPath);
-        $parsed = $parser->parse(pathinfo($this->zipPath, PATHINFO_FILENAME), $this->mangakaName);
+        // Enriched parse keyed on the relative path (folder author, _series parody). / パス基準の強化解析。
+        $parsed = $resolver->resolve($this->relativePath)->parsed;
 
         $attributes = [
             'mangaka_id' => $this->mangakaId,

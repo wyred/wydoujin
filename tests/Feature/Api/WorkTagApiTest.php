@@ -98,9 +98,10 @@ test('detach without tag_id or type+value returns 422', function (): void {
     $this->deleteJson("/api/v1/works/{$work->id}/tags", [], $this->h)->assertStatus(422);
 });
 
-test('reset unlocks and re-derives from the filename', function (): void {
+test('reset unlocks and re-derives from the file path', function (): void {
     $m = Mangaka::factory()->create(['name' => 'Z.A.P.']);
     $work = Work::factory()->for($m)->create([
+        'relative_path' => 'Z.A.P./(C89) [Z.A.P. (ズッキーニ)] 四畳半物語 (オリジナル) [DL版].zip',
         'filename' => '(C89) [Z.A.P. (ズッキーニ)] 四畳半物語 (オリジナル) [DL版].zip',
         'tags_locked' => true,
     ]);

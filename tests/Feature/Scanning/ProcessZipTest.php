@@ -6,7 +6,7 @@ use App\Jobs\ProcessZip;
 use App\Models\Mangaka;
 use App\Models\Scan;
 use App\Models\Work;
-use App\Parsing\FilenameParser;
+use App\Parsing\PathMetadataResolver;
 use App\Tagging\WorkTagSync;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
@@ -19,7 +19,7 @@ afterEach(fn () => $this->cleanLibrary());
 
 function runProcessZip(ProcessZip $job): void
 {
-    $job->handle(app(ArchiveInspector::class), app(FilenameParser::class), app(WorkTagSync::class));
+    $job->handle(app(ArchiveInspector::class), app(PathMetadataResolver::class), app(WorkTagSync::class));
 }
 
 test('a new work with images dispatches a GenerateCover task and counts added', function (): void {

@@ -17,10 +17,11 @@ test('fresh scan creates works with parsed metadata and cover', function (): voi
     $this->assertSame(1, $scan->stats['added']);
     $work = Work::firstOrFail();
     $this->assertSame('四畳半物語', $work->title);
-    // Metadata now lives in tags. / メタデータはタグに。
+    // Metadata now lives in tags. The mangaka folder "Z.A.P." also derives an author tag
+    // (folder→author), alongside the filename's circle/author. / フォルダ由来の作者タグも付く。
     $this->assertEqualsCanonicalizing([
         ['event', 'C89'], ['circle', 'Z.A.P.'], ['author', 'ズッキーニ'],
-        ['parody', 'オリジナル'], ['flag', 'DL版'],
+        ['parody', 'オリジナル'], ['flag', 'DL版'], ['author', 'Z.A.P.'],
     ], $work->tags()->get()->map(fn ($t) => [$t->type, $t->value])->all());
     $this->assertSame(2, $work->page_count);
     $this->assertSame(['001.jpg', '002.jpg'], $work->entries);

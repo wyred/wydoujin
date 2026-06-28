@@ -7,6 +7,7 @@ use App\Archive\CoverGenerator;
 use App\Archive\ZipPageReader;
 use App\Parsing\FilenameParser;
 use App\Parsing\NamePattern;
+use App\Parsing\PathMetadataResolver;
 use App\Scanning\LibraryScanner;
 use App\Scanning\ScannerContract;
 use App\Series\SeriesDetector;
@@ -52,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         // state, so each finalize resolves a fresh one. / スキャン毎の状態のため毎回生成。
         $this->app->bind(LibraryScanner::class, fn ($app) => new LibraryScanner(
             $app->make(WorkTagSync::class),
+            $app->make(PathMetadataResolver::class),
             config('scan.library_path'),
         ));
 

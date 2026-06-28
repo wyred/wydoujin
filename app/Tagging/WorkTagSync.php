@@ -4,8 +4,8 @@ namespace App\Tagging;
 
 use App\Models\Tag;
 use App\Models\Work;
-use App\Parsing\FilenameParser;
 use App\Parsing\ParsedName;
+use App\Parsing\PathMetadataResolver;
 
 /**
  * Derives a work's auto tags from the parsed filename and syncs the work_tag
@@ -17,7 +17,7 @@ final class WorkTagSync
     /** Per-run memo of (type,value) → canonical tag id; this instance lives one scan. / スキャン内メモ。 */
     private array $canonicalCache = [];
 
-    public function __construct(private readonly FilenameParser $parser)
+    public function __construct(private readonly PathMetadataResolver $resolver)
     {
     }
 
@@ -27,8 +27,9 @@ final class WorkTagSync
         if ($work->tags_locked) {
             return;
         }
-        // The parsed fields aren't stored post-migration: re-parse the filename. / 解析値は保存しないため再解析。
-        $parsed ??= $this->parser->parse(pathinfo($work->filename, PATHINFO_FILENAME), $work->mangaka->name);
+        // Parsed fields aren't stored post-migration. Re-derive from the stored relative_path so
+        // folder/subfolder tags survive a rescan. / 保存パスから再導出（フォルダ/サブフォルダ由来タグも保持）。
+        $parsed ??= $this->resolver->resolve($work->relative_path)->parsed;
 
         $ids = [];
         foreach ($this->derive($parsed) as [$type, $value]) {
@@ -38,7 +39,8 @@ final class WorkTagSync
     }
 
     /**
-     * Auto tag set for a parse: one per non-empty scalar + one per flag. / 自動タグ集合。
+     * Auto tag set for a parse: one per non-empty scalar + one per flag + folder/subfolder
+     * extras. / 自動タグ集合（スカラー＋フラグ＋フォルダ由来）。
      *
      * @return list<array{0:string,1:string}> [type, value] pairs
      */
@@ -54,6 +56,13 @@ final class WorkTagSync
         foreach ($parsed->flags as $flag) {
             if ($flag !== '') {
                 $pairs[] = ['flag', $flag];
+            }
+        }
+        // Folder-derived circle/author and the _series parody. The pivot sync de-dupes identical
+        // (type,value) ids, so a folder value matching the filename collapses to one tag.
+        foreach ($parsed->extraTags as [$type, $value]) {
+            if ($value !== null && $value !== '') {
+                $pairs[] = [$type, $value];
             }
         }
 

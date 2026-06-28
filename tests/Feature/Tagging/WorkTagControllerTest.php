@@ -73,16 +73,24 @@ test('detach removes and locks', function (): void {
     $this->assertTrue($work->fresh()->tags_locked);
 });
 
-test('reset unlocks and rederives from filename', function (): void {
-    // filename parses to circle "Z.A.P." + title; a stray manual tag is wiped on reset.
-    $work = Work::factory()->create(['filename' => '[Z.A.P.] Title.zip', 'tags_locked' => true]);
+test('reset unlocks and rederives from the file path', function (): void {
+    // The path re-derives to circle "Z.A.P." + author "ズッキーニ" (filename block + folder name,
+    // de-duped); a stray manual tag is wiped on reset.
+    $work = Work::factory()->create([
+        'relative_path' => 'Z.A.P. (ズッキーニ)/[Z.A.P. (ズッキーニ)] Title.zip',
+        'filename' => '[Z.A.P. (ズッキーニ)] Title.zip',
+        'tags_locked' => true,
+    ]);
     $this->attachTag($work, 'theme', 'stray');
 
     $this->postJson('/work/'.$work->id.'/tags/reset')->assertOk();
 
     $work->refresh();
     $this->assertFalse($work->tags_locked);
-    $this->assertSame([['circle', 'Z.A.P.']], $work->tags->map(fn (Tag $t) => [$t->type, $t->value])->all());
+    $this->assertEqualsCanonicalizing(
+        [['circle', 'Z.A.P.'], ['author', 'ズッキーニ']],
+        $work->tags->map(fn (Tag $t) => [$t->type, $t->value])->all(),
+    );
 });
 
 test('suggest returns matching canonical values', function (): void {

@@ -82,6 +82,14 @@ test('full rescan creates a queued full scan and dispatches a forced ScanLibrary
         $job->scanId === $scan->id && $job->triggeredBy === 'full' && $job->force === true);
 });
 
+test('maintenance page shows the Full Rescan control and its warning copy', function (): void {
+    $this->get('/maintenance')->assertOk()
+        ->assertSee('Full Rescan')
+        ->assertSee("this can't be undone")
+        ->assertSee('The entire cover-image cache')
+        ->assertSee('Your files and reading progress are kept.');
+});
+
 test('full rescan does not double dispatch when a scan is active', function (): void {
     Queue::fake();
     $active = Scan::create(['status' => 'running', 'triggered_by' => 'manual', 'started_at' => now()]);

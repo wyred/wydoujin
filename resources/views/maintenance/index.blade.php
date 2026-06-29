@@ -16,8 +16,35 @@
             <div class="flex items-center" style="gap:var(--space-md); margin-bottom:var(--space-xl); flex-wrap:wrap;">
                 <x-button type="button" x-on:click="scan()" x-bind:disabled="scanning || busy"
                           x-bind:style="(scanning || busy) ? 'opacity:0.5; pointer-events:none;' : ''">▶ Scan now</x-button>
+                <x-button type="button" variant="secondary" x-on:click="openFullConfirm()" x-bind:disabled="scanning || busy"
+                          x-bind:style="(scanning || busy) ? 'opacity:0.5; pointer-events:none;' : ''">⟳ Full Rescan</x-button>
                 <span style="font:var(--type-caption); color:var(--text-muted);" x-text="panelText()"></span>
                 <span x-show="error" x-text="error" style="color:var(--color-error); font:var(--type-caption);"></span>
+            </div>
+
+            {{-- Full Rescan confirm dialog (destructive, irreversible) --}}
+            <div x-show="confirmFull" x-cloak x-transition.opacity
+                 class="fixed inset-0 flex items-center justify-center"
+                 style="z-index:50; background:rgba(0,0,0,0.45); padding:var(--space-lg);"
+                 x-on:click.self="cancelFull()" x-on:keydown.escape.window="cancelFull()">
+                <div role="dialog" aria-modal="true"
+                     style="background:var(--surface-card); border:1px solid var(--color-hairline); border-radius:var(--radius-lg); max-width:32rem; width:100%; padding:var(--space-xl);">
+                    <h2 style="font:var(--type-lead); color:var(--text-heading); margin-bottom:var(--space-sm);">Full Rescan — this can&#039;t be undone.</h2>
+                    <p style="font:var(--type-body); color:var(--text-muted); margin-bottom:var(--space-sm);">This permanently deletes and rebuilds everything derived from your files:</p>
+                    <ul style="font:var(--type-body); color:var(--text-muted); margin:0 0 var(--space-md) var(--space-lg); list-style:disc;">
+                        <li>All tags and per-work tag edits</li>
+                        <li>All tag renames and merges</li>
+                        <li>All series groupings (manual and automatic)</li>
+                        <li>The entire cover-image cache</li>
+                    </ul>
+                    <p style="font:var(--type-body-strong); color:var(--text-heading); margin-bottom:var(--space-sm);">Your files and reading progress are kept.</p>
+                    <p style="font:var(--type-caption); color:var(--text-muted); margin-bottom:var(--space-lg);">Everything is then re-derived from your filenames using the current scanning rules.</p>
+                    <div class="flex items-center justify-end" style="gap:var(--space-md);">
+                        <x-button type="button" variant="secondary" x-on:click="cancelFull()">Cancel</x-button>
+                        <x-button type="button" x-on:click="confirmFullRescan()"
+                                  style="background:var(--color-error); color:var(--color-on-primary); border:1px solid transparent;">Wipe &amp; rebuild</x-button>
+                    </div>
+                </div>
             </div>
 
             <x-section-heading>Recent scans</x-section-heading>
@@ -61,6 +88,7 @@
             latest: initial.latest ?? null,
             history: initial.history ?? [],
             busy: false,
+            confirmFull: false,
             error: '',
             _poll: null,
 
@@ -70,12 +98,12 @@
             isActive(s) { return !!s && (s.status === 'queued' || s.status === 'running'); },
             get scanning() { return this.isActive(this.latest); },
 
-            async scan() {
+            async scan(endpoint = '/scan') {
                 if (this.scanning || this.busy) return;
                 this.busy = true;
                 this.error = '';
                 try {
-                    const data = await window.wyd.postJson('/scan');
+                    const data = await window.wyd.postJson(endpoint);
                     this.latest = data.scan;
                     this.startPolling();
                 } catch (e) {
@@ -84,6 +112,9 @@
                     this.busy = false;
                 }
             },
+            openFullConfirm() { if (!this.scanning && !this.busy) this.confirmFull = true; },
+            cancelFull() { this.confirmFull = false; },
+            confirmFullRescan() { this.confirmFull = false; this.scan('/maintenance/full-rescan'); },
             startPolling() {
                 clearInterval(this._poll);
                 this._poll = setInterval(() => this.tick(), 2000);

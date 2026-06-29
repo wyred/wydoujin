@@ -29,7 +29,8 @@ test('full rescan button opens and cancels the confirm dialog', function (): voi
 
     $page->assertSee('Full Rescan')
         ->assertDontSee('permanently deletes and rebuilds') // dialog hidden initially
-        ->press('⟳ Full Rescan')
+        ->press('⟳ Full Rescan') // exact text match — the button label is prefixed with the ⟳ glyph
+
         ->assertSee('permanently deletes and rebuilds')     // warning now visible
         ->assertSee('Your files and reading progress are kept.')
         ->press('Cancel')

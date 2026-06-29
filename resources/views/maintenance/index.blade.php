@@ -29,7 +29,7 @@
                  x-on:click.self="cancelFull()" x-on:keydown.escape.window="cancelFull()">
                 <div role="dialog" aria-modal="true"
                      style="background:var(--surface-card); border:1px solid var(--color-hairline); border-radius:var(--radius-lg); max-width:32rem; width:100%; padding:var(--space-xl);">
-                    <h2 style="font:var(--type-lead); color:var(--text-heading); margin-bottom:var(--space-sm);">Full Rescan — this can&#039;t be undone.</h2>
+                    <h2 style="font:var(--type-lead); color:var(--text-heading); margin-bottom:var(--space-sm);">Full Rescan — this can't be undone.</h2>
                     <p style="font:var(--type-body); color:var(--text-muted); margin-bottom:var(--space-sm);">This permanently deletes and rebuilds everything derived from your files:</p>
                     <ul style="font:var(--type-body); color:var(--text-muted); margin:0 0 var(--space-md) var(--space-lg); list-style:disc;">
                         <li>All tags and per-work tag edits</li>

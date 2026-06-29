@@ -85,7 +85,7 @@ test('full rescan creates a queued full scan and dispatches a forced ScanLibrary
 test('maintenance page shows the Full Rescan control and its warning copy', function (): void {
     $this->get('/maintenance')->assertOk()
         ->assertSee('Full Rescan')
-        ->assertSee("this can't be undone")
+        ->assertSee("this can't be undone", false) // false: match the raw apostrophe, not its HTML entity
         ->assertSee('The entire cover-image cache')
         ->assertSee('Your files and reading progress are kept.');
 });

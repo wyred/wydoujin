@@ -9,6 +9,7 @@ use App\Parsing\FilenameParser;
 use App\Parsing\NamePattern;
 use App\Parsing\PathMetadataResolver;
 use App\Scanning\LibraryScanner;
+use App\Scanning\MetadataReset;
 use App\Scanning\ScannerContract;
 use App\Series\SeriesDetector;
 use App\Series\SeriesDetectorContract;
@@ -47,6 +48,10 @@ class AppServiceProvider extends ServiceProvider
             config('scan.cover.width'),
             config('scan.cover.quality'),
             config('scan.limits.max_image_pixels'),
+        ));
+
+        $this->app->singleton(MetadataReset::class, fn () => new MetadataReset(
+            config('scan.data_path').'/covers',
         ));
 
         // Scanner is bound, not a singleton: WorkTagSync carries per-scan canonical-id

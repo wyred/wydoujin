@@ -43,6 +43,7 @@ Route::get('/browse', [BrowseSearchController::class, 'index'])->name('browse.in
 Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
 Route::get('/maintenance/status', [MaintenanceController::class, 'status'])->name('maintenance.status');
 Route::post('/scan', [MaintenanceController::class, 'scan'])->name('scan.store');
+Route::post('/maintenance/full-rescan', [MaintenanceController::class, 'fullScan'])->name('maintenance.full-rescan');
 
 Route::get('/series/{series}', [SeriesController::class, 'show'])->name('series.show');
 Route::post('/series/group', [SeriesManagementController::class, 'group'])->name('series.group');

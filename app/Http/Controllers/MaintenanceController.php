@@ -35,6 +35,12 @@ final class MaintenanceController extends Controller
         return response()->json(['scan' => $this->serialize($action->handle('manual'))], 202);
     }
 
+    public function fullScan(TriggerScan $action)
+    {
+        // Clean-slate wipe + forced re-derive; the action dedupes against an active scan. / 全消去後に再走査。
+        return response()->json(['scan' => $this->serialize($action->handle('full', force: true))], 202);
+    }
+
     public function status()
     {
         return response()->json(['scan' => $this->serialize(Scan::latest()->first())]);

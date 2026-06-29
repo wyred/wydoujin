@@ -11,7 +11,7 @@ use App\Models\Scan;
  */
 final class TriggerScan
 {
-    public function handle(string $triggeredBy = 'manual'): Scan
+    public function handle(string $triggeredBy = 'manual', bool $force = false): Scan
     {
         $active = Scan::active()->latest()->first();
         if ($active) {
@@ -19,7 +19,7 @@ final class TriggerScan
         }
 
         $scan = Scan::create(['status' => 'queued', 'triggered_by' => $triggeredBy]);
-        ScanLibrary::dispatch($triggeredBy, $scan->id);
+        ScanLibrary::dispatch($triggeredBy, $scan->id, $force);
 
         return $scan;
     }

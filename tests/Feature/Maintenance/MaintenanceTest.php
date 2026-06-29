@@ -69,3 +69,25 @@ test('status returns latest scan or null', function (): void {
         ->assertJsonPath('scan.status', 'completed')
         ->assertJsonPath('scan.stats.added', 3);
 });
+
+test('full rescan creates a queued full scan and dispatches a forced ScanLibrary', function (): void {
+    Queue::fake();
+
+    $this->postJson('/maintenance/full-rescan')->assertStatus(202)
+        ->assertJsonPath('scan.status', 'queued')
+        ->assertJsonPath('scan.triggered_by', 'full');
+
+    $scan = Scan::firstOrFail();
+    Queue::assertPushed(ScanLibrary::class, fn (ScanLibrary $job) =>
+        $job->scanId === $scan->id && $job->triggeredBy === 'full' && $job->force === true);
+});
+
+test('full rescan does not double dispatch when a scan is active', function (): void {
+    Queue::fake();
+    $active = Scan::create(['status' => 'running', 'triggered_by' => 'manual', 'started_at' => now()]);
+
+    $this->postJson('/maintenance/full-rescan')->assertStatus(202)->assertJsonPath('scan.id', $active->id);
+
+    $this->assertSame(1, Scan::count());
+    Queue::assertNothingPushed();
+});

@@ -41,6 +41,7 @@ final class ProcessZip implements ShouldQueue
         public readonly string $zipPath,
         public readonly string $relativePath,
         public readonly string $scanStartIso,
+        public readonly bool $force = false,
     ) {
     }
 
@@ -75,9 +76,10 @@ final class ProcessZip implements ShouldQueue
         $size = (int) filesize($this->zipPath);
         $mtime = (int) filemtime($this->zipPath);
 
-        // Fast incremental skip: same path, unchanged size + mtime. / 高速スキップ。
+        // Fast incremental skip: same path, unchanged size + mtime — unless this is a forced
+        // rescan, which must re-derive every work. / 高速スキップ（強制時は無効）。
         $atPath = Work::where('relative_path', $this->relativePath)->first();
-        if ($atPath !== null && (int) $atPath->file_size === $size && (int) $atPath->file_mtime === $mtime) {
+        if (! $this->force && $atPath !== null && (int) $atPath->file_size === $size && (int) $atPath->file_mtime === $mtime) {
             $atPath->update(['last_seen_at' => $scanStart, 'is_missing' => false]);
 
             return 'skipped';
@@ -102,9 +104,11 @@ final class ProcessZip implements ShouldQueue
             'is_missing' => false,
         ];
 
+        $hasImages = $inspection->imageEntries !== [];
+
         $byHash = Work::where('content_hash', $inspection->contentHash)->first();
         if ($byHash !== null) {
-            return $this->applyToExisting($byHash, $attributes, $parsed, $tags);
+            return $this->applyToExisting($byHash, $attributes, $parsed, $tags, $hasImages);
         }
 
         $attributes['content_hash'] = $inspection->contentHash;
@@ -116,12 +120,12 @@ final class ProcessZip implements ShouldQueue
             // and treat this one as a move/update so progress stays attached. / 同一hash競合は更新扱い。
             $byHash = Work::where('content_hash', $inspection->contentHash)->firstOrFail();
 
-            return $this->applyToExisting($byHash, $attributes, $parsed, $tags);
+            return $this->applyToExisting($byHash, $attributes, $parsed, $tags, $hasImages);
         }
 
         $tags->sync($work, $parsed); // sync metadata tags / メタデータタグを同期
 
-        if ($inspection->imageEntries !== []) {
+        if ($hasImages) {
             GenerateCover::dispatch($work->id); // offload cover render / 表紙生成は別タスクへ
         }
 
@@ -135,11 +139,17 @@ final class ProcessZip implements ShouldQueue
      * @param  array<string,mixed>  $attributes
      * @return 'moved'|'updated'
      */
-    private function applyToExisting(Work $work, array $attributes, \App\Parsing\ParsedName $parsed, WorkTagSync $tags): string
+    private function applyToExisting(Work $work, array $attributes, \App\Parsing\ParsedName $parsed, WorkTagSync $tags, bool $hasImages): string
     {
         $moved = $work->relative_path !== $this->relativePath;
         $work->update($attributes);
         $tags->sync($work, $parsed);
+
+        // A forced rescan cleared the cover cache, so re-render existing works' covers too
+        // (the normal scan only covers newly-added works). / 強制時は既存作品の表紙も再生成。
+        if ($this->force && $hasImages) {
+            GenerateCover::dispatch($work->id);
+        }
 
         return $moved ? 'moved' : 'updated';
     }

@@ -125,3 +125,38 @@ test('a cancelled batch makes the task no-op', function (): void {
     $this->assertSame(0, Work::count());
     $this->assertSame(0, (int) $scan->refresh()->added);
 });
+
+test('a forced ProcessZip re-derives an unchanged file and re-renders its cover', function (): void {
+    $this->makeDoujin('Circle', 'Title', ['001.jpg']);
+    $mangaka = Mangaka::create(['name' => 'Circle', 'slug' => 'circle']);
+    $scan = Scan::create(['status' => 'running', 'triggered_by' => 'full', 'started_at' => now()]);
+    $path = $this->libraryPath.'/Circle/Title.zip';
+
+    // First pass adds the work (and its cover).
+    Bus::fake();
+    runProcessZip(new ProcessZip($scan->id, $mangaka->id, $mangaka->name, $path, 'Circle/Title.zip', now()->toIso8601String()));
+    $work = Work::firstOrFail();
+
+    // Second pass, file unchanged, force = true: NOT skipped — re-derived as 'updated' + cover re-dispatched.
+    Bus::fake();
+    runProcessZip(new ProcessZip($scan->id, $mangaka->id, $mangaka->name, $path, 'Circle/Title.zip', now()->toIso8601String(), true));
+
+    Bus::assertDispatched(GenerateCover::class, fn (GenerateCover $g) => $g->workId === $work->id);
+    $this->assertSame(1, (int) $scan->refresh()->updated);
+});
+
+test('without force an unchanged file is still fast-skipped', function (): void {
+    $this->makeDoujin('Circle', 'Title', ['001.jpg']);
+    $mangaka = Mangaka::create(['name' => 'Circle', 'slug' => 'circle']);
+    $scan = Scan::create(['status' => 'running', 'triggered_by' => 'manual', 'started_at' => now()]);
+    $path = $this->libraryPath.'/Circle/Title.zip';
+
+    Bus::fake();
+    runProcessZip(new ProcessZip($scan->id, $mangaka->id, $mangaka->name, $path, 'Circle/Title.zip', now()->toIso8601String()));
+
+    Bus::fake();
+    runProcessZip(new ProcessZip($scan->id, $mangaka->id, $mangaka->name, $path, 'Circle/Title.zip', now()->toIso8601String()));
+
+    Bus::assertNotDispatched(GenerateCover::class); // second pass skipped
+    $this->assertSame(0, (int) $scan->refresh()->updated);
+});

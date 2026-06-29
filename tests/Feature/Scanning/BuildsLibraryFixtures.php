@@ -5,6 +5,7 @@ namespace Tests\Feature\Scanning;
 use App\Jobs\ScanLibrary;
 use App\Models\Scan;
 use App\Scanning\LibraryScanner;
+use App\Scanning\MetadataReset;
 use ZipArchive;
 
 /** Builds a temp library of <mangaka>/<doujin>.zip with real GD images. / テスト用ライブラリ生成。 */
@@ -21,7 +22,7 @@ trait BuildsLibraryFixtures
     private function runScan(string $triggeredBy = 'manual'): Scan
     {
         $scan = Scan::create(['status' => 'queued', 'triggered_by' => $triggeredBy]);
-        (new ScanLibrary($triggeredBy, $scan->id))->handle(app(LibraryScanner::class));
+        (new ScanLibrary($triggeredBy, $scan->id))->handle(app(LibraryScanner::class), app(MetadataReset::class));
 
         return $scan->refresh();
     }

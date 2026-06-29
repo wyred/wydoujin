@@ -4,7 +4,9 @@ use App\Jobs\FinalizeScan;
 use App\Jobs\ProcessZip;
 use App\Jobs\ScanLibrary;
 use App\Models\Scan;
+use App\Models\Tag;
 use App\Models\Work;
+use App\Scanning\MetadataReset;
 use App\Scanning\ScannerContract;
 use App\Series\SeriesDetectorContract;
 use Illuminate\Support\Facades\Bus;
@@ -36,7 +38,7 @@ test('scan fans out one ProcessZip task per zip in a batch', function (): void {
     $this->makeDoujin('Z.A.P.', 'B', ['001.jpg', '002.jpg']);
 
     $scan = Scan::create(['status' => 'queued', 'triggered_by' => 'manual']);
-    (new ScanLibrary('manual', $scan->id))->handle(app(ScannerContract::class));
+    (new ScanLibrary('manual', $scan->id))->handle(app(ScannerContract::class), app(MetadataReset::class));
 
     Bus::assertBatched(fn ($batch) => $batch->jobs->count() === 2
         && $batch->jobs->every(fn ($job) => $job instanceof ProcessZip));
@@ -47,7 +49,7 @@ test('empty library dispatches FinalizeScan directly (no batch)', function (): v
     Bus::fake();
 
     $scan = Scan::create(['status' => 'queued', 'triggered_by' => 'manual']);
-    (new ScanLibrary('manual', $scan->id))->handle(app(ScannerContract::class));
+    (new ScanLibrary('manual', $scan->id))->handle(app(ScannerContract::class), app(MetadataReset::class));
 
     Bus::assertNotDispatched(ProcessZip::class);
     Bus::assertDispatched(FinalizeScan::class, fn (FinalizeScan $job) => $job->scanId === $scan->id);
@@ -73,7 +75,7 @@ test('planning failure records a failed scan', function (): void {
     });
 
     $scan = Scan::create(['status' => 'queued', 'triggered_by' => 'scheduled']);
-    (new ScanLibrary('scheduled', $scan->id))->handle(app(ScannerContract::class));
+    (new ScanLibrary('scheduled', $scan->id))->handle(app(ScannerContract::class), app(MetadataReset::class));
 
     $scan->refresh();
     $this->assertSame('failed', $scan->status);
@@ -95,7 +97,7 @@ test('job updates a pre created scan row when given its id', function (): void {
 test('job creates a row when no scan id is given', function (): void {
     $this->makeDoujin('Z.A.P.', '[Z.A.P. (ズッキーニ)] 四畳半物語', ['001.jpg']);
 
-    (new ScanLibrary('scheduled'))->handle(app(ScannerContract::class));
+    (new ScanLibrary('scheduled'))->handle(app(ScannerContract::class), app(MetadataReset::class));
 
     $scan = Scan::firstOrFail(); // fell back to creating one
     $this->assertSame('completed', $scan->status);
@@ -167,4 +169,29 @@ test('FinalizeScan carries the configurable timeout', function (): void {
     config(['scan.scan_timeout' => 1234]);
 
     $this->assertSame(1234, (new FinalizeScan(1))->timeout);
+});
+
+test('a forced scan wipes existing metadata and fans out forced ProcessZip tasks', function (): void {
+    Bus::fake();
+    $this->makeDoujin('Circle', 'A', ['001.jpg']);
+    Tag::create(['type' => 'author', 'value' => 'StaleAuthor']); // pre-existing metadata to be wiped
+
+    $scan = Scan::create(['status' => 'queued', 'triggered_by' => 'full']);
+    (new ScanLibrary('full', $scan->id, true))->handle(app(ScannerContract::class), app(MetadataReset::class));
+
+    expect(Tag::count())->toBe(0); // reset ran
+    Bus::assertBatched(fn ($batch) => $batch->jobs->count() === 1
+        && $batch->jobs->every(fn ($job) => $job instanceof ProcessZip && $job->force === true));
+});
+
+test('a normal scan does not run the reset', function (): void {
+    Bus::fake();
+    $this->makeDoujin('Circle', 'A', ['001.jpg']);
+    Tag::create(['type' => 'author', 'value' => 'KeepAuthor']);
+
+    $scan = Scan::create(['status' => 'queued', 'triggered_by' => 'manual']);
+    (new ScanLibrary('manual', $scan->id))->handle(app(ScannerContract::class), app(MetadataReset::class));
+
+    expect(Tag::count())->toBe(1); // untouched
+    Bus::assertBatched(fn ($batch) => $batch->jobs->every(fn ($job) => $job->force === false));
 });

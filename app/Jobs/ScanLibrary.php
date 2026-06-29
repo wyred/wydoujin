@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Scan;
+use App\Scanning\MetadataReset;
 use App\Scanning\ScannerContract;
 use Illuminate\Bus\Batch;
 use Illuminate\Bus\Queueable;
@@ -39,11 +40,12 @@ final class ScanLibrary implements ShouldQueue
     public function __construct(
         public readonly string $triggeredBy = 'manual',
         public readonly ?int $scanId = null,
+        public readonly bool $force = false,
     ) {
         $this->timeout = (int) config('scan.scan_timeout', 3600);
     }
 
-    public function handle(ScannerContract $scanner): void
+    public function handle(ScannerContract $scanner, MetadataReset $reset): void
     {
         // Update the row created at dispatch (web "Scan now"); else create one
         // (CLI/scheduler, or if the row vanished). / 起動時の行を更新、無ければ作成。
@@ -63,7 +65,12 @@ final class ScanLibrary implements ShouldQueue
         $scanStartIso = $scan->started_at->toIso8601String();
 
         try {
-            $jobs = $scanner->planJobs($scanId, $scanStartIso);
+            // Full rescan: clean-slate wipe before re-deriving everything. / フルスキャンは先に全消去。
+            if ($this->force) {
+                $reset->reset();
+            }
+
+            $jobs = $scanner->planJobs($scanId, $scanStartIso, $this->force);
         } catch (Throwable $e) {
             $scan->update(['status' => 'failed', 'stats' => ['error' => $e->getMessage()], 'finished_at' => now()]);
             report($e);

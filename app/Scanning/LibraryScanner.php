@@ -32,7 +32,7 @@ final class LibraryScanner implements ScannerContract
      *
      * @return list<ProcessZip>
      */
-    public function planJobs(int $scanId, string $scanStartIso): array
+    public function planJobs(int $scanId, string $scanStartIso, bool $force = false): array
     {
         $jobs = [];
         $mangakaByName = []; // memo: derived name → Mangaka (sequential here, so no create race) / 競合回避メモ
@@ -47,6 +47,7 @@ final class LibraryScanner implements ScannerContract
                 $zipPath,
                 $relativePath,
                 $scanStartIso,
+                $force,
             );
         }
 

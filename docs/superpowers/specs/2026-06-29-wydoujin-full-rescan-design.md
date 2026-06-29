@@ -92,8 +92,19 @@ deleted), folding counts into the final stats.
 - Add a secondary **"⟳ Full Rescan"** button beside "▶ Scan now", visually distinct (destructive
   intent) using design-system tokens — no raw hex/size.
 - Clicking opens an **Alpine-driven styled confirm dialog** (NOT native `confirm()`): an overlay +
-  panel reading *"Wipe all tags, curation & covers and rebuild?"* with **Cancel** / **Confirm**.
-  Built with design-system tokens; dark mode inherits automatically.
+  panel with a **clear warning of exactly what it will do**, then **Cancel** / **Confirm**. Built with
+  design-system tokens; dark mode inherits automatically. The warning copy:
+  - **Heading:** *"Full Rescan — this can't be undone."*
+  - **Body:** *"This permanently deletes and rebuilds everything derived from your files:"* followed
+    by a short bulleted list:
+    - *All tags and per-work tag edits*
+    - *All tag renames and merges*
+    - *All series groupings (manual and automatic)*
+    - *The entire cover-image cache*
+  - **Reassurance line:** *"Your files and reading progress are kept."*
+  - **Closing line:** *"Everything is then re-derived from your filenames using the current scanning
+    rules."*
+  - The **Confirm** button is labelled *"Wipe & rebuild"* and styled as the destructive action.
 - **Confirm** posts to `/maintenance/full-rescan` and then starts the **existing** status polling.
   The `scan()` Alpine method is generalised to take an endpoint (`scan('/scan')` vs
   `scan('/maintenance/full-rescan')`) so both buttons share one code path and one `latest`/`history`

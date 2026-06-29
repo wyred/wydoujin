@@ -23,3 +23,16 @@ test('maintenance page shows recent scans section', function (): void {
     $page->assertSee('Recent scans')
         ->assertNoJavaScriptErrors();
 });
+
+test('full rescan button opens and cancels the confirm dialog', function (): void {
+    $page = visit('/maintenance');
+
+    $page->assertSee('Full Rescan')
+        ->assertDontSee('permanently deletes and rebuilds') // dialog hidden initially
+        ->press('⟳ Full Rescan')
+        ->assertSee('permanently deletes and rebuilds')     // warning now visible
+        ->assertSee('Your files and reading progress are kept.')
+        ->press('Cancel')
+        ->assertDontSee('permanently deletes and rebuilds') // dismissed
+        ->assertNoJavaScriptErrors();
+});

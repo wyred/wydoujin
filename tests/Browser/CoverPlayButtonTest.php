@@ -55,5 +55,11 @@ test('play button renders without errors in dark mode', function (): void {
 
     $page->assertScript('document.documentElement.getAttribute("data-dark")', 'true')
         ->assertPresent("a[aria-label^='Read']")
+        // The disc must composite from black in dark mode too (theme-stable token),
+        // so the white triangle stays legible — guards the --color-ink inversion.
+        // Chromium serializes a color-mix(in srgb, ...) result as `color(srgb r g b / a)`,
+        // not `rgba(...)` — black shows as "0 0 0"; the old --color-ink token showed
+        // "0.96 0.96 0.97" (near-white) here in dark mode.
+        ->assertScript("getComputedStyle(document.querySelector(\"a[aria-label^='Read']\")).backgroundColor.startsWith('color(srgb 0 0 0')", true)
         ->assertNoJavaScriptErrors();
 });

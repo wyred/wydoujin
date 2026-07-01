@@ -20,7 +20,7 @@
         {{-- Scrim: decorative dim on hover; never intercepts clicks. --}}
         <div aria-hidden="true"
              class="wyd-card-scrim absolute inset-0 z-20 pointer-events-none"
-             style="border-radius:var(--radius-md); background:color-mix(in srgb, var(--color-ink) 35%, transparent);"></div>
+             style="border-radius:var(--radius-md); background:color-mix(in srgb, var(--color-black) 35%, transparent);"></div>
 
         {{-- Play button. The centering layer passes clicks through
              (pointer-events:none) EXCEPT on the circle itself, so only the circle
@@ -30,7 +30,7 @@
             <a href="/work/{{ $work->id }}/read" aria-label="Read {{ $work->title }}"
                class="wyd-card-play pointer-events-auto flex items-center justify-center"
                style="width:56px; height:56px; border-radius:var(--radius-pill);
-                      background:color-mix(in srgb, var(--color-ink) 55%, transparent);
+                      background:color-mix(in srgb, var(--color-black) 55%, transparent);
                       border:1px solid var(--color-hairline);">
                 {{-- Play triangle (CSS shape), nudged right for optical centering. --}}
                 <span aria-hidden="true" style="display:block; width:0; height:0; margin-left:4px;

@@ -61,19 +61,20 @@ detail overlay.
 
 ## Look & motion
 
-- **Circle:** a translucent dark disc — `background: color-mix(in srgb, var(--color-ink) 55%,
+- **Circle:** a translucent dark disc — `background: color-mix(in srgb, var(--color-black) 55%,
   transparent)` — with a **white play triangle** (`var(--color-on-primary)`), a **1px hairline
   ring** (`var(--color-hairline)` — house rule: elevation is a ring, not a shadow), and
   `border-radius: var(--radius-pill)`. The triangle is a CSS-only shape (border trick or an inline
   SVG using `currentColor`), nudged slightly right for optical centering.
-- **Scrim:** `color-mix(in srgb, var(--color-ink) ~35%, transparent)` over the whole cover.
+- **Scrim:** `color-mix(in srgb, var(--color-black) ~35%, transparent)` over the whole cover.
 - **Reveal (desktop):** circle + scrim default to `opacity:0`; on `.group:hover` → `opacity:1`
   with a quiet ~150ms transition. The circle presses to `scale(0.95)` on `:active` (house motion).
 - **Touch (`@media (hover: none)`):** the **circle is always visible** (`opacity:1`) and the scrim
   stays hidden — the solid dark disc is legible on its own, so covers aren't permanently dimmed.
 - **Tokens only** — no raw hex or px colors; `color-mix` over existing tokens provides the
-  translucency. Dark mode inherits via the existing token remap; the disc + white triangle read on
-  both themes.
+  translucency. `--color-black` (`#000`, no dark-mode override) keeps the disc + scrim dark in
+  both themes — unlike theme-relative tokens such as `--color-ink` (which inverts to near-white in
+  dark mode), so the white triangle stays legible on both.
 
 ## Accessibility
 

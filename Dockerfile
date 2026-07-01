@@ -18,7 +18,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --prefer-dist --no-interaction --optimize-autoloader
 
 # --- Runtime ---
-FROM dunglas/frankenphp:1-php8.3@sha256:e56d10584026d0bb9d6048c8873664e2d0c0640c385614149cd81addb58e08a3 AS runtime
+FROM dunglas/frankenphp:1-php8.3@sha256:46e2afafc47ab66e2aa8da8a1c91070d7fe1cca057153df451de68ef1c84d864 AS runtime
 
 # s6-overlay
 ARG S6_OVERLAY_VERSION=3.2.0.0

@@ -23,8 +23,9 @@ test('play button is hidden by default, reveals on hover, and opens the reader',
     $page->hover("a[aria-label^='Read']");
     $page->assertScript("getComputedStyle(document.querySelector(\"a[aria-label^='Read']\")).opacity", '1');
 
-    // Clicking the circle navigates to the reader.
-    $page->script("document.querySelector(\"a[aria-label^='Read']\").click()");
+    // Real pointer click on the circle — genuinely hit-tests that the play link is the
+    // topmost interactive layer (z-30, pointer-events:auto), not just that its handler fires.
+    $page->click("a[aria-label^='Read']");
     $page->assertPathIs('/work/'.$work->id.'/read')
         ->assertNoJavaScriptErrors();
 });
@@ -37,7 +38,12 @@ test('clicking the cover away from the circle opens the detail page', function (
 
     // The first /work/{id} anchor is the full-cover detail layer; clicking it (not the
     // centered play circle) opens the detail page.
-    $page->script("document.querySelector(\"a[href='/work/".$work->id."']\").click()");
+    // The high-level browser API clicks element centers, and the play circle sits at the
+    // cover's center — so neutralise it first. A real click on the detail overlay must then
+    // pass through the scrim + centering layer (both pointer-events:none) to land on the
+    // detail page, proving the layering routes non-circle clicks correctly.
+    $page->script("document.querySelector(\"a[aria-label^='Read']\").remove()");
+    $page->click("a[aria-hidden='true'][href='/work/".$work->id."']");
     $page->assertPathIs('/work/'.$work->id)
         ->assertNoJavaScriptErrors();
 });

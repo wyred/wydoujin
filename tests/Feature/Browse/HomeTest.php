@@ -48,7 +48,9 @@ test('random picks shows up to 8 present works and hides missing', function (): 
     $start = strpos($content, 'Random Picks');
     $picks = substr($content, $start);
 
-    $this->assertSame(8, substr_count($picks, 'href="/work/'));
+    // Each present work card renders exactly one play-button link (…/read); missing
+    // works render no card, so this still asserts "8 present works shown".
+    $this->assertSame(8, substr_count($picks, '/read"'));
     $this->assertStringNotContainsString('GhostPick', $picks);
 });
 

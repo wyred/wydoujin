@@ -34,6 +34,19 @@ test('work card links to work and shows progress', function (): void {
     $this->assertStringContainsString('5', $html); // progress count
 });
 
+test('work card renders a play shortcut to the reader', function (): void {
+    $work = Work::factory()->for(Mangaka::factory())->create(['title' => 'PlayMe']);
+    $work->load('readingProgress', 'tags');
+
+    $html = Blade::render('<x-work-card :work="$work" />', ['work' => $work]);
+
+    // Detail link is still present (cover + title both point at the work page).
+    $this->assertStringContainsString('href="/work/'.$work->id.'"', $html);
+    // The play circle links straight to the reader and is labelled for assistive tech.
+    $this->assertStringContainsString('href="/work/'.$work->id.'/read"', $html);
+    $this->assertStringContainsString('aria-label="Read '.$work->title.'"', $html);
+});
+
 test('badge and heading render slot', function (): void {
     $this->assertStringContainsString('オリジナル', Blade::render('<x-badge>オリジナル</x-badge>'));
     $this->assertStringContainsString('var(--color-primary)', Blade::render('<x-badge>x</x-badge>'));

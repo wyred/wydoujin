@@ -36,8 +36,6 @@ test('clicking the cover away from the circle opens the detail page', function (
 
     $page = visit('/browse');
 
-    // The first /work/{id} anchor is the full-cover detail layer; clicking it (not the
-    // centered play circle) opens the detail page.
     // The high-level browser API clicks element centers, and the play circle sits at the
     // cover's center — so neutralise it first. A real click on the detail overlay must then
     // pass through the scrim + centering layer (both pointer-events:none) to land on the

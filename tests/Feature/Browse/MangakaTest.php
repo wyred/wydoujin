@@ -102,3 +102,21 @@ test('json respects q and format=json', function (): void {
     $this->assertStringContainsString('KeepMe', $res->json('html'));
     $this->assertStringNotContainsString('DropMe', $res->json('html'));
 });
+
+test('index renders live search wiring', function (): void {
+    Mangaka::factory()->create(['name' => 'WiredArtist']);
+
+    $this->get('/mangaka')->assertOk()
+        ->assertSee('aria-label="Search mangaka"', false)
+        ->assertSee('x-data="mangakaIndex', false)
+        ->assertSee('x-ref="grid"', false)
+        ->assertSee('x-ref="pagination"', false)
+        ->assertSee('No mangaka match');   // empty-state element present in DOM (Alpine-hidden)
+});
+
+test('search input pre-fills from q for the no-js path', function (): void {
+    Mangaka::factory()->create(['name' => 'PrefillArtist']);
+
+    $this->get('/mangaka?q=Prefill')->assertOk()
+        ->assertSee('value="Prefill"', false);
+});

@@ -82,6 +82,10 @@ test('pagination links carry q', function (): void {
     $this->get('/mangaka?q=Match')->assertOk()
         ->assertSee('q=Match&amp;page=2', false)
         ->assertDontSee('ZOther');
+
+    // The JSON path renders the same paginator, so its links carry q too.
+    $res = $this->get('/mangaka?format=json&q=Match');
+    $this->assertStringContainsString('q=Match&amp;page=2', $res->json('pagination'));
 });
 
 test('json endpoint returns total, cards html, and pagination html', function (): void {

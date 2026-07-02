@@ -27,7 +27,7 @@
 
         {{-- Server-correct initial visibility (also right for no-JS); Alpine toggles after. --}}
         <div x-show="total === 0 && q"
-             style="{{ ($mangaka->isEmpty() && $q !== '') ? '' : 'display:none;' }} padding:var(--space-xxl) 0; text-align:center;">
+             style="{{ ($mangaka->total() === 0 && $q !== '') ? '' : 'display:none;' }} padding:var(--space-xxl) 0; text-align:center;">
             <p style="font:var(--type-body); color:var(--text-muted);">No mangaka match.</p>
             <button type="button" @click="clear()"
                     style="margin-top:var(--space-sm); background:none; border:none; cursor:pointer; font:var(--type-caption); color:var(--text-link);">Clear search</button>
@@ -65,6 +65,7 @@
             },
 
             async refresh() {
+                clearTimeout(this._debounce);
                 this.error = false;
                 this.syncUrl();
                 const id = ++this._reqId;

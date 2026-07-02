@@ -47,3 +47,58 @@ test('show separates series and standalone works', function (): void {
         ->assertSee('LoneWork')
         ->assertSee('href="/work/'.Work::where('title', 'LoneWork')->first()->id.'"', false);
 });
+
+test('index filters by q', function (): void {
+    Mangaka::factory()->create(['name' => 'AlphaArtist']);
+    Mangaka::factory()->create(['name' => 'BetaArtist']);
+
+    $this->get('/mangaka?q=alpha')->assertOk()
+        ->assertSee('AlphaArtist')
+        ->assertDontSee('BetaArtist');
+});
+
+test('q treats LIKE metacharacters literally', function (): void {
+    // % and _ must not act as wildcards; ! (the escape char) must match itself.
+    Mangaka::factory()->create(['name' => 'Percent%Name']);
+    Mangaka::factory()->create(['name' => 'PercentXName']);
+    Mangaka::factory()->create(['name' => 'Bang!Name']);
+
+    $this->get('/mangaka?q='.urlencode('Percent%'))->assertOk()
+        ->assertSee('Percent%Name')
+        ->assertDontSee('PercentXName');
+
+    $this->get('/mangaka?q='.urlencode('Bang!N'))->assertOk()
+        ->assertSee('Bang!Name');
+});
+
+test('pagination links carry q', function (): void {
+    // 24 per page → 30 matches span 2 pages. / 1ページ24件。
+    foreach (range(1, 30) as $i) {
+        Mangaka::factory()->create(['name' => sprintf('Match %02d', $i)]);
+    }
+    Mangaka::factory()->create(['name' => 'ZOther']);
+
+    // Page URLs are HTML-escaped in Blade, so & renders as &amp;.
+    $this->get('/mangaka?q=Match')->assertOk()
+        ->assertSee('q=Match&amp;page=2', false)
+        ->assertDontSee('ZOther');
+});
+
+test('json endpoint returns total, cards html, and pagination html', function (): void {
+    Mangaka::factory()->create(['name' => 'JsonArtist']);
+
+    $res = $this->getJson('/mangaka')->assertOk()
+        ->assertJsonStructure(['total', 'html', 'pagination']);
+    expect($res->json('total'))->toBe(1);
+    $this->assertStringContainsString('JsonArtist', $res->json('html'));
+});
+
+test('json respects q and format=json', function (): void {
+    Mangaka::factory()->create(['name' => 'KeepMe']);
+    Mangaka::factory()->create(['name' => 'DropMe']);
+
+    $res = $this->get('/mangaka?format=json&q=Keep')->assertOk();
+    expect($res->json('total'))->toBe(1);
+    $this->assertStringContainsString('KeepMe', $res->json('html'));
+    $this->assertStringNotContainsString('DropMe', $res->json('html'));
+});

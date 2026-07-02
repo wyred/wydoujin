@@ -10,12 +10,10 @@
             <p style="font:var(--type-body); color:var(--text-muted);">No mangaka yet — run <code>wydoujin:scan</code>.</p>
         @else
             <x-card-grid>
-                @foreach ($mangaka as $artist)
-                    <x-collection-card href="/mangaka/{{ $artist->slug }}" :path="$artist->rep_cover" :title="$artist->name" :count="$artist->works_count" />
-                @endforeach
+                @include('mangaka._cards')
             </x-card-grid>
 
-            <x-pagination :paginator="$mangaka" />
+            @include('mangaka._pagination', ['paginator' => $mangaka])
         @endif
     </main>
 @endsection
